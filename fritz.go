@@ -17,7 +17,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"strings"
 )
@@ -37,7 +36,7 @@ func (c *Client) SetCustomHTTPClient(client *http.Client) {
 }
 
 func (c *Client) Initialize() error {
-	if c.isInitialized() {
+	if c.IsInitialized() {
 		fmt.Println("Already initialized. Closing current session.")
 		c.Close()
 	}
@@ -73,7 +72,7 @@ func (c *Client) SID() string {
 }
 
 func (c *Client) Close() {
-	if c.isInitialized() {
+	if c.IsInitialized() {
 		if c.session != nil {
 			c.session.close()
 		}
@@ -199,12 +198,12 @@ func (c *Client) get(urlStr string) (req *http.Request, err error) {
 	return req, nil
 }
 
-func (c Client) isInitialized() bool {
+func (c Client) IsInitialized() bool {
 	return c.client != nil
 }
 
 func (c *Client) checkExpiry() (err error) {
-	if c.isInitialized() && c.session.isExpired() || !c.isInitialized() {
+	if c.IsInitialized() && c.session.isExpired() || !c.IsInitialized() {
 		err = c.Initialize()
 	}
 
@@ -254,13 +253,11 @@ func decode(resp *http.Response, mystruct interface{}) (err error) {
 }
 
 func getBody(resp *http.Response) (body string, err error) {
-	b, err := httputil.DumpResponse(resp, true)
+	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return
 	}
-
-	body = string(b)
-	return
+	return string(bodyBytes), nil
 }
 
 func printRequestBody(req *http.Request) {
