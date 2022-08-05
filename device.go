@@ -37,6 +37,8 @@ func (c *Client) SetIP(deviceUID string, ip string) (err error) {
 }
 
 func (c *Client) RenameDevice(deviceUID string, newName string) (err error) {
+	// Names may contain only letters (a-z, A-Z), numerals (0-9), and hyphens (-)
+
 	// 1. get current deviceip (this is required due to a quirk in fritzbox's request data validation)
 	data := url.Values{
 		"sid":  {c.session.Sid},

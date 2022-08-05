@@ -63,6 +63,8 @@ type Clientlist struct {
 
 `Profile` is empty by default (see Docs for more info)
 
+**Device**: `SetIP`, `RenameDevice`
+
 **Profiles**: `GetAvailableProfiles`, `GetProfileUIDFromDevice`, `SetProfileForDevice`
 
 **Logs**: `GetEventLog`, `GetEventLogUntil`
