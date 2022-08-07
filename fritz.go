@@ -37,7 +37,6 @@ func (c *Client) SetCustomHTTPClient(client *http.Client) {
 
 func (c *Client) Initialize() error {
 	if c.IsInitialized() {
-		fmt.Println("Already initialized. Closing current session.")
 		c.Close()
 	}
 
@@ -47,7 +46,7 @@ func (c *Client) Initialize() error {
 	}
 
 	// check url validity
-	if !strings.HasPrefix(c.BaseUrl, "http://") {
+	if !strings.HasPrefix(c.BaseUrl, "http") {
 		return fmt.Errorf("base url has to start with http(s)://")
 	}
 
@@ -79,6 +78,7 @@ func (c *Client) Close() {
 
 		c.client.CloseIdleConnections()
 		c.client = nil
+		c.session = nil
 	}
 }
 
