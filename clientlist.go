@@ -98,6 +98,14 @@ func (c *Client) GetCLientList() (clients Clientlist, err error) {
 			x = re.FindStringIndex(body)
 		}
 
+		// sometimes the uids are an integer for some reason
+		re = regexp.MustCompile(`"UID":[0-9]*,`)
+		uid := re.FindAllStringIndex(body, -1)
+		for _, uidInt := range uid {
+			currUid := body[uidInt[0]:uidInt[1]]
+			body = strings.Replace(body, currUid, "\"UID\":\""+strings.Split(strings.Split(currUid, ":")[1], ",")[0]+"\",", 1)
+		}
+
 		// Conninfo macht kein Sinn wenns leer ist, anderes Format als wenns voll ists
 		body = strings.ReplaceAll(body, "conninfo\":[[]]", "conninfo\":[]")
 
@@ -105,7 +113,6 @@ func (c *Client) GetCLientList() (clients Clientlist, err error) {
 		body = body[:len(body)-2] + "}]}"
 
 		clients = Clientlist{}
-
 		err = json.Unmarshal([]byte(body), &clients)
 	}
 
