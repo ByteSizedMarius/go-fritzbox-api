@@ -92,7 +92,7 @@ type TrafficForDuration struct {
 ```
 </details>
 
-**Custom Requests**
+**Custom Requests** (See [examples](/examples/main.go))
 
 ## Usage
 

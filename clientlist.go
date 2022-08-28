@@ -2,6 +2,7 @@ package fritzbox
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -71,7 +72,6 @@ func (c *Client) GetCLientList() (clients Clientlist, err error) {
 	}
 
 	if len(body) > 10 {
-
 		body = strings.Split(body[strings.Index(body, "{"):], "\n")[0]
 		body = body[strings.Index(body, "{\"rootuid") : strings.Index(body, "}}},")+3]
 
@@ -79,7 +79,7 @@ func (c *Client) GetCLientList() (clients Clientlist, err error) {
 		body = strings.Replace(body, "\"devices\":{", "\"devices\":[", 1)
 		body = body[:len(body)-3] + "]}"
 
-		var re = regexp.MustCompile(`"landevice[0-9]{3,4}":{`)
+		var re = regexp.MustCompile(`("landevice[0-9]{3,4}":{)|("[0-9]{1,4}":{)`)
 		x := re.FindStringIndex(body)
 
 		for x != nil {
@@ -104,6 +104,8 @@ func (c *Client) GetCLientList() (clients Clientlist, err error) {
 
 		// Ende des Arrays setzen
 		body = body[:len(body)-2] + "}]}"
+
+		fmt.Println(body)
 
 		clients = Clientlist{}
 
