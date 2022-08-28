@@ -2,7 +2,6 @@ package fritzbox
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -104,8 +103,6 @@ func (c *Client) GetCLientList() (clients Clientlist, err error) {
 
 		// Ende des Arrays setzen
 		body = body[:len(body)-2] + "}]}"
-
-		fmt.Println(body)
 
 		clients = Clientlist{}
 
