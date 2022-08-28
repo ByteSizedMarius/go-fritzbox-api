@@ -19,44 +19,44 @@ Get all currently connected devices in a list.
 
 ```go
 type Clientlist struct {
-	Rootuid string `json:"rootuid"`
+	Rootuid string
 	Devices []struct {
-		Devid     string `json:"devid"`
+		Devid     string
 		Stateinfo struct {
-			GuestOwe        bool `json:"guest_owe"`
-			Active          bool `json:"active"`
-			Guest           bool `json:"guest"`
-			Online          bool `json:"online"`
-			Blocked         bool `json:"blocked"`
-			Realtime        bool `json:"realtime"`
-			Notallowed      bool `json:"notallowed"`
-			InternetBlocked bool `json:"internetBlocked"`
-		} `json:"stateinfo,omitempty"`
+			GuestOwe        bool
+			Active          bool
+			Guest           bool
+			Online          bool
+			Blocked         bool
+			Realtime        bool
+			Notallowed      bool
+			InternetBlocked bool
+		}
 		Profile    Profile
-		Devtype    string   `json:"devtype"`
-		Dist       int      `json:"dist"`
-		Parent     string   `json:"parent"`
-		Category   string   `json:"category"`
-		Ownentry   bool     `json:"ownentry"`
-		UID        string   `json:"UID"`
-		Conn       string   `json:"conn"`
-		Master     bool     `json:"master"`
-		Ipinfo     []string `json:"ipinfo"`
+		Devtype    string
+		Dist       int
+		Parent     string
+		Category   string
+		Ownentry   bool
+		UID        string
+		Conn       string
+		Master     bool
+		Ipinfo     []string
 		Updateinfo struct {
-			State string `json:"state"`
-		} `json:"updateinfo"`
-		Gateway  bool `json:"gateway"`
+			State string
+		}
+		Gateway  bool
 		Nameinfo struct {
-			Name string `json:"name"`
-		} `json:"nameinfo,omitempty"`
-		Children []interface{} `json:"children"`
+			Name string
+		} 
+		Children []interface{}
 		Conninfo []struct {
-			Speed   string `json:"speed"`
-			SpeedTx int    `json:"speed_tx"`
-			SpeedRx int    `json:"speed_rx"`
-			Desc    string `json:"desc"`
-		} `json:"conninfo"`
-	} `json:"devices"`
+			Speed   string
+			SpeedTx int
+			SpeedRx int
+			Desc    string
+		}
+	}
 }
 ```
 </details>
@@ -68,6 +68,29 @@ type Clientlist struct {
 **Profiles**: `GetAvailableProfiles`, `GetProfileUIDFromDevice`, `SetProfileForDevice`
 
 **Logs**: `GetEventLog`, `GetEventLogUntil`
+
+**Statistics**: `GetTrafficStats`
+
+<details>
+  <summary>[Expand] Trafficstats datatype</summary>
+
+```go
+type TrafficStatistics struct {
+    LastMonth TrafficForDuration
+    ThisWeek  TrafficForDuration 
+    Today     TrafficForDuration 
+    Yesterday TrafficForDuration 
+    ThisMonth TrafficForDuration 
+}
+
+type TrafficForDuration struct {
+    BytesSentHigh     string 
+    BytesSentLow      string 
+    BytesReceivedHigh string
+    BytesReceivedLow  string 
+}
+```
+</details>
 
 **Custom Requests**
 
