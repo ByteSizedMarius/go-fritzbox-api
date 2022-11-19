@@ -100,9 +100,9 @@ func (c *Client) GetCLientList() (clients Clientlist, err error) {
 
 		// sometimes the uids are an integer for some reason
 		re = regexp.MustCompile(`"UID":[0-9]*,`)
-		uid := re.FindAllStringIndex(body, -1)
-		for _, uidInt := range uid {
-			currUid := body[uidInt[0]:uidInt[1]]
+		uid := re.FindAllStringIndex(body, -5)
+		for i, uidInt := range uid {
+			currUid := body[uidInt[0]+(i*2) : uidInt[1]+(i*2)]
 			body = strings.Replace(body, currUid, "\"UID\":\""+strings.Split(strings.Split(currUid, ":")[1], ",")[0]+"\",", 1)
 		}
 
