@@ -4,14 +4,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 )
 
 type HanFunUnit struct {
+	// Saves all properties of the unit in raw json-messages. Does not include values already represented (values present in the device-struct, as well as etsi-unit-info)
 	RawProperties map[string]json.RawMessage
 	ETSIUnitInfo  ETSIUnitInfo
-	Interface     HFInterface
-	device        *Device
+
+	Interface HFInterface
+	device    *Device
 }
 
 type ETSIUnitInfo struct {
@@ -20,6 +23,16 @@ type ETSIUnitInfo struct {
 	UnitType     string `json:"unittype"`
 }
 
+// IsUnitOfType returns true if the units' interface is of the given type
+// For example [...].IsUnitOfType(HFAlert{})
+func (h HanFunUnit) IsUnitOfType(t interface{}) bool {
+	if reflect.TypeOf(h.Interface) == reflect.TypeOf(t) {
+		return true
+	}
+	return false
+}
+
+// Reload fetches the device-information for this unit from the fritzbox and updates the structs' values
 func (h *HanFunUnit) Reload(c *Client) error {
 	resp, err := getDeviceInfos(c, h.Device())
 	if err != nil {
@@ -31,7 +44,6 @@ func (h *HanFunUnit) Reload(c *Client) error {
 		return err
 	}
 
-	// get capability struct
 	tt, err := h.fromJSON(newCapa, h.device)
 	if err != nil {
 		return err
@@ -63,16 +75,45 @@ func (h HanFunUnit) GetRawProperties() (s map[string]string, err error) {
 	return
 }
 
+// GetInterfaceString returns the units interface-type as a string (values taken from documentation)
+func (e ETSIUnitInfo) GetInterfaceString() string {
+	return hanFunInterfacesStr[e.Interface]
+}
+
+// GetUnitString returns the units type as a string (values taken from documentation)
+func (e ETSIUnitInfo) GetUnitString() string {
+	return hanFunUnitTypes[e.UnitType]
+}
+
+func (h HanFunUnit) String() string {
+	return fmt.Sprintf("{ETSI Units Info: %s, Interface: %s, Device: %s}", h.ETSIUnitInfo, h.Interface, h.Device())
+}
+
+func (h HanFunUnit) Device() *Device {
+	return h.device
+}
+
+func (e ETSIUnitInfo) String() string {
+	return fmt.Sprintf("{ETSI-Device-ID: %s, Interface-Type: %s (%s), Units-Type: %s (%s)}", e.ETSIDeviceID, e.GetInterfaceString(), e.Interface, e.GetUnitString(), e.UnitType)
+}
+
 func (h HanFunUnit) fromJSON(m map[string]json.RawMessage, d *Device) (HanFunUnit, error) {
 	err := json.Unmarshal(m["etsiunitinfo"], &h.ETSIUnitInfo)
 	if err != nil {
 		return h, err
 	}
 
-	h.Interface = hanFunInterfaces[h.ETSIUnitInfo.Interface]
-	h.Interface, err = h.Interface.fromJSON(m)
-	if err != nil {
-		return h, err
+	// if interface is known, parse it
+	// otherwise its values are still accessible via RawProperties
+	i, ok := hanFunInterfaces[h.ETSIUnitInfo.Interface]
+	if !ok {
+		fmt.Printf("Interface %s is not supported. Access values via RawProperties.", h.ETSIUnitInfo.Interface)
+	} else {
+		h.Interface = i
+		h.Interface, err = h.Interface.fromJSON(m)
+		if err != nil {
+			return h, err
+		}
 	}
 
 	h.RawProperties = make(map[string]json.RawMessage)
@@ -84,26 +125,4 @@ func (h HanFunUnit) fromJSON(m map[string]json.RawMessage, d *Device) (HanFunUni
 
 	h.device = d
 	return h, nil
-}
-
-func (h HanFunUnit) String() string {
-	return fmt.Sprintf("{ETSI Units Info: %s, Interface: %s, Device: %s}", h.ETSIUnitInfo, h.Interface, h.Device())
-}
-
-func (h HanFunUnit) Device() *Device {
-	return h.device
-}
-
-// GetInterfaceString returns the units interface-type as a string (values taken from documentation)
-func (e ETSIUnitInfo) GetInterfaceString() string {
-	return hanFunInterfacesStr[e.Interface]
-}
-
-// GetUnitString returns the units type as a string (values taken from documentation)
-func (e ETSIUnitInfo) GetUnitString() string {
-	return hanFunUnitTypes[e.UnitType]
-}
-
-func (e ETSIUnitInfo) String() string {
-	return fmt.Sprintf("{ETSI-Device-ID: %s, Interface-Type: %s (%s), Units-Type: %s (%s)}", e.ETSIDeviceID, e.GetInterfaceString(), e.Interface, e.GetUnitString(), e.UnitType)
 }
