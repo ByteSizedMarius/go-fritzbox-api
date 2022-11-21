@@ -1,4 +1,4 @@
-package fritzbox
+package go_fritzbox_api
 
 /*
 *

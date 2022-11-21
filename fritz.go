@@ -1,4 +1,4 @@
-package fritzbox
+package go_fritzbox_api
 
 /*
 *
@@ -257,7 +257,7 @@ func getBody(resp *http.Response) (body string, err error) {
 	if err != nil {
 		return
 	}
-	return string(bodyBytes), nil
+	return strings.Trim(string(bodyBytes), "\n"), nil
 }
 
 func printRequestBody(req *http.Request) {

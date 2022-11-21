@@ -1,4 +1,4 @@
-package fritzbox
+package go_fritzbox_api
 
 import (
 	"fmt"
@@ -103,7 +103,7 @@ func (c *Client) GetProfileUIDFromDevice(deviceUID string) (profileUID string, e
 
 // SetProfileForDevice (mainly untested) sets the profile from the profileUID to the device with the given deviceUID.
 // Assigning the guest-Profile does not work when guest-wifi is off (makes sense), otherwise it might work
-func (c *Client)SetProfileForDevice(deviceUID string, profileUID string) (err error) {
+func (c *Client) SetProfileForDevice(deviceUID string, profileUID string) (err error) {
 	if err = c.checkExpiry(); err != nil {
 		return
 	}

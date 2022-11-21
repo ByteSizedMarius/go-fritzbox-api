@@ -10,7 +10,7 @@ import (
 
 func main() {
 	// Connection to fritzbox
-	cl := fritzbox.Client{
+	cl := go_fritzbox_api.Client{
 		Username: "username",
 		Password: "password",
 	}
@@ -18,7 +18,7 @@ func main() {
 	err := cl.Initialize()
 	checkError(err)
 
-	// Devicelist
+	// devicelist
 	fmt.Println("Currently connected devices:")
 	devices, err := cl.GetCLientList()
 	for _, d := range devices.Devices {
@@ -64,12 +64,12 @@ func main() {
 	// custom POST request
 	// add entry to default phone book
 	data := url.Values{
-		"sid": {cl.SID()},
-		"entryname": {"My Test Entry"},
+		"sid":            {cl.SID()},
+		"entryname":      {"My Test Entry"},
 		"numbertypenew1": {"home"},
-		"numbernew1": {"666"},
-		"prionumber": {"none"},
-		"apply": {""},
+		"numbernew1":     {"666"},
+		"prionumber":     {"none"},
+		"apply":          {""},
 	}
 
 	status, body, err := cl.CustomRequest(http.MethodPost, "/fon_num/fonbook_entry.lua", data)
@@ -91,7 +91,7 @@ func main() {
 	// Open a second session in parallel
 	// Connection to a Fritz!Repeater
 	// FRITZ!Repeater 1200: User field is ignored when logging in (can be anything)
-	clRep := fritzbox.Client{
+	clRep := go_fritzbox_api.Client{
 		BaseUrl:  "http://192.168.178.28",
 		Username: "",
 		Password: "password",
