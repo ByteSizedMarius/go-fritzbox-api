@@ -9,7 +9,7 @@ type HanFun struct {
 	CapName string
 	// A single HanFun-Device can potentially consist of multiple units (I think)?
 	Units  HanFunUnits
-	device *Device
+	device *SmarthomeDevice
 }
 
 type HanFunUnits []HanFunUnit
@@ -73,11 +73,11 @@ func (hfu HanFun) String() string {
 	return fmt.Sprintf("%s: {Units: %s}", hfu.CapName, hfu.Units)
 }
 
-func (hfu HanFun) Device() *Device {
+func (hfu HanFun) Device() *SmarthomeDevice {
 	return hfu.device
 }
 
-func (hfu *HanFun) unitFromJSON(m map[string]json.RawMessage, d *Device) (hf HanFunUnit, err error) {
+func (hfu *HanFun) unitFromJSON(m map[string]json.RawMessage, d *SmarthomeDevice) (hf HanFunUnit, err error) {
 	hu, err := hf.fromJSON(m, d)
 	if err != nil {
 		return
@@ -86,7 +86,7 @@ func (hfu *HanFun) unitFromJSON(m map[string]json.RawMessage, d *Device) (hf Han
 	return hu, nil
 }
 
-func (hfu HanFun) fromJSON(_ map[string]json.RawMessage, d *Device) (Capability, error) {
+func (hfu HanFun) fromJSON(_ map[string]json.RawMessage, d *SmarthomeDevice) (Capability, error) {
 	hfu.device = d
 	return hfu, nil
 }

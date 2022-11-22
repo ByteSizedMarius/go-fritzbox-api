@@ -17,8 +17,8 @@ type Capabilities map[string]Capability
 type Capability interface {
 	Name() string
 	String() string
-	Device() *Device
-	fromJSON(m map[string]json.RawMessage, d *Device) (Capability, error)
+	Device() *SmarthomeDevice
+	fromJSON(m map[string]json.RawMessage, d *SmarthomeDevice) (Capability, error)
 }
 
 func (c Capabilities) String() string {
@@ -103,7 +103,7 @@ func getDeviceInfosFromCapability(c *Client, ca Capability) (Capability, error) 
 	return ca.fromJSON(newCapa, ca.Device())
 }
 
-func getDeviceInfos(c *Client, d *Device) (string, error) {
+func getDeviceInfos(c *Client, d *SmarthomeDevice) (string, error) {
 	data := url.Values{
 		"sid":       {c.SID()},
 		"ain":       {d.Identifier},

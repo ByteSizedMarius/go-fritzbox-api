@@ -14,7 +14,7 @@ type HanFunUnit struct {
 	ETSIUnitInfo  ETSIUnitInfo
 
 	Interface HFInterface
-	device    *Device
+	device    *SmarthomeDevice
 }
 
 type ETSIUnitInfo struct {
@@ -89,7 +89,7 @@ func (h HanFunUnit) String() string {
 	return fmt.Sprintf("{ETSI Units Info: %s, Interface: %s, Device: %s}", h.ETSIUnitInfo, h.Interface, h.Device())
 }
 
-func (h HanFunUnit) Device() *Device {
+func (h HanFunUnit) Device() *SmarthomeDevice {
 	return h.device
 }
 
@@ -97,7 +97,7 @@ func (e ETSIUnitInfo) String() string {
 	return fmt.Sprintf("{ETSI-Device-ID: %s, Interface-Type: %s (%s), Units-Type: %s (%s)}", e.ETSIDeviceID, e.GetInterfaceString(), e.Interface, e.GetUnitString(), e.UnitType)
 }
 
-func (h HanFunUnit) fromJSON(m map[string]json.RawMessage, d *Device) (HanFunUnit, error) {
+func (h HanFunUnit) fromJSON(m map[string]json.RawMessage, d *SmarthomeDevice) (HanFunUnit, error) {
 	err := json.Unmarshal(m["etsiunitinfo"], &h.ETSIUnitInfo)
 	if err != nil {
 		return h, err

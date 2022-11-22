@@ -14,7 +14,7 @@ type Temperature struct {
 	CapName string
 	Celsius string `json:"celsius"`
 	Offset  string `json:"offset"`
-	device  *Device
+	device  *SmarthomeDevice
 }
 
 type TemperatureStats struct {
@@ -109,11 +109,11 @@ func (t Temperature) String() string {
 	return fmt.Sprintf("%s: {Celsius: %f, Offset: %f}", t.CapName, t.GetCelsiusNumeric(), t.GetOffset())
 }
 
-func (t Temperature) Device() *Device {
+func (t Temperature) Device() *SmarthomeDevice {
 	return t.device
 }
 
-func (t Temperature) fromJSON(m map[string]json.RawMessage, d *Device) (Capability, error) {
+func (t Temperature) fromJSON(m map[string]json.RawMessage, d *SmarthomeDevice) (Capability, error) {
 	err := json.Unmarshal(m["temperature"], &t)
 	if err != nil {
 		return t, err
