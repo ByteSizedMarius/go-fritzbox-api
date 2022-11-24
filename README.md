@@ -1,6 +1,8 @@
-# go-fritzbox-api
+# go fritzbox api
 
-**Warning: The parsing may currently be unstable and may panic if there is an unexpected response.**
+Quick & dirty API implementation for the AVM FRITZ!Box using Golang and REST. 
+
+**Warning: The parsing is currently rather unstable and may panic if there is an unexpected response. There is no official API for most these functions (except any [smarthome-related-stuff](https://avm.de/fileadmin/user_upload/Global/Service/Schnittstellen/AHA-HTTP-Interface.pdf)). This means, consistency across software-versions or different routers/repeaters is never guaranteed.**
 
 ## Attribution
 
@@ -8,9 +10,15 @@ This repository (structure, authentication) is based on [Philipp Franke](https:/
 
 I added parsing for some endpoints and made some of his code worse in the process ;)
 
+## Compatiblity
+
+Compatibility is currently unknown. This library was tested with FRITZ!OS 07.29 with the 6690 Cable. It uses REST-Methods to call the same endpoints the frontend uses. These endpoints may neither be consistent nor backwards-compatible. They may also break unexpectedly: For example, getting the full devicelist broke, when I added a FRITZ!OS-compatible smarthome-device because it uses a datastructure different from other devices.
+
 ## Features
 
-**Clientlist**: 
+**Smarthome:** Using the official http-API, some types of smarthome-devices have been implemented. See the [separate readme](SMARTHOME.md).
+
+**Clientlist:** 
 `GetCLientList`
 Get all currently connected devices in a list.
 
@@ -63,13 +71,13 @@ type Clientlist struct {
 
 `Profile` is empty by default (see Docs for more info)
 
-**Device**: `SetIP`, `RenameDevice`
+**Device:** `SetIP`, `RenameDevice`
 
-**Profiles**: `GetAvailableProfiles`, `GetProfileUIDFromDevice`, `SetProfileForDevice`
+**Profiles:** `GetAvailableProfiles`, `GetProfileUIDFromDevice`, `SetProfileForDevice`
 
-**Logs**: `GetEventLog`, `GetEventLogUntil`
+**Logs:** `GetEventLog`, `GetEventLogUntil`
 
-**Statistics**: `GetTrafficStats`
+**Statistics:** `GetTrafficStats`
 
 <details>
   <summary>[Expand] Trafficstats datatype</summary>
@@ -92,7 +100,7 @@ type TrafficForDuration struct {
 ```
 </details>
 
-**Custom Requests** (See [examples](/examples/main.go))
+**Custom Requests:** (See [examples](/examples/main.go))
 
 ## Usage
 
@@ -108,8 +116,15 @@ Issues, Pull Requests and [E-Mails](mailto:fritz@marius.codes) are always welcom
 
 I accept suggestions for any new endpoints.
 
-### How to add endpoints
+### Adding endpoints
 
-I used burpsuites proxy with the inbuilt browser to look at the request, then sent it to the repeater and played around with the parameters until I found the parameters that were mandatory for the request to work (xhr, lang, oldpage, etc. can usually be omitted)
+I used burpsuites proxy with the inbuilt browser to look at the request, then sent it to the repeater and played around with the parameters until I found the parameters that were mandatory for the request to work (xhr, lang, oldpage, etc. can usually be omitted).
 
-If you would like more info, don't hesitate to shoot me an email, I don't feel like writing an essay that no one's going to read . 
+If you would like more info, don't hesitate to shoot me an email, I don't feel like writing an essay that no one's going to read.
+
+## Roadmap
+
+- Tests
+- Better documentation
+- Implementing more smarthome-capabilities/HanFun-interfaces
+- Implementing endpoints for smarthome-templates (`gettemplatelistinfos`, `applytemplate`)
