@@ -24,7 +24,7 @@ func (c *Client) GetSmarthomeDevicesFilter(requiredCapabilities []string) (dl De
 	}
 
 	var tmp []SmarthomeDevice
-	var valid bool
+	valid := true
 	for _, e := range dl.Devices {
 		for _, capab := range requiredCapabilities {
 			if !e.HasCapability(capab) {
