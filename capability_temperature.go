@@ -41,8 +41,8 @@ func (t Temperature) GetCelsiusNumeric() float64 {
 	return toTemp(t.Celsius)
 }
 
-// GetOffset returns the temperature offset set for the device in float converted to the usual format (eg. 21.5)
-func (t Temperature) GetOffset() float64 {
+// GetOffsetNumeric returns the temperature offset set for the device in float converted to the usual format (eg. 21.5)
+func (t Temperature) GetOffsetNumeric() float64 {
 	return toTemp(t.Offset)
 }
 
@@ -106,7 +106,7 @@ func (t Temperature) Name() string {
 }
 
 func (t Temperature) String() string {
-	return fmt.Sprintf("%s: {Celsius: %f, Offset: %f}", t.CapName, t.GetCelsiusNumeric(), t.GetOffset())
+	return fmt.Sprintf("%s: {Celsius: %f, Offset: %f}", t.CapName, t.GetCelsiusNumeric(), t.GetOffsetNumeric())
 }
 
 func (t Temperature) Device() *SmarthomeDevice {
