@@ -14,18 +14,18 @@ import (
 // Hkr is the struct for HeizungsKörperRegler. Note: current temperature can be accessed via the temperature-capability.
 type Hkr struct {
 	CapName                 string
-	Tsoll                   string `json:"tsoll"`
-	Absenk                  string `json:"absenk"`
-	Komfort                 string `json:"komfort"`
-	Lock                    string `json:"lock"`                    // Keylock (Tastensperre) configurated via Web-UI/API, activated automatically if summeractive or holdidayactive
-	Devicelock              string `json:"devicelock"`              // Same as lock, configurated manually on the device itself
-	Errorcode               string `json:"errorcode"`               // 0 = no error
-	Windowopenactiv         string `json:"windowopenactiv"`         // 1 if window currently detected as open
-	Windowopenactiveendtime string `json:"windowopenactiveendtime"` // time in seconds until radiator turns back on
-	Boostactive             string `json:"boostactive"`             // same as window
-	Boostactiveendtime      string `json:"boostactiveendtime"`      // same as window
-	Batterylow              string `json:"batterylow"`              // 1 if battery low
-	Battery                 string `json:"battery"`                 // battery %
+	Tsoll                   string   `json:"tsoll"`
+	Absenk                  string   `json:"absenk"`
+	Komfort                 string   `json:"komfort"`
+	Lock                    string   `json:"lock"`                    // Keylock (Tastensperre) configurated via Web-UI/API, activated automatically if summeractive or holdidayactive
+	Devicelock              string   `json:"devicelock"`              // Same as lock, configurated manually on the device itself
+	Errorcode               string   `json:"errorcode"`               // 0 = no error
+	Windowopenactiv         string   `json:"windowopenactiv"`         // 1 if window currently detected as open
+	Windowopenactiveendtime string   `json:"windowopenactiveendtime"` // time in seconds until radiator turns back on
+	Boostactive             string   `json:"boostactive"`             // same as window
+	Boostactiveendtime      string   `json:"boostactiveendtime"`      // same as window
+	Batterylow              string   `json:"batterylow"`              // 1 if battery low
+	Battery                 string   `json:"battery"`                 // battery %
 	Nextchange              struct { // next change in temperature
 		Endperiod string `json:"endperiod"`
 		Tchange   string `json:"tchange"`
@@ -266,11 +266,11 @@ func (h Hkr) GetWindowOpenEndtime() (t time.Time) {
 	return unixStringToTime(h.Windowopenactiveendtime)
 }
 
-func (h *Hkr) DeactivateWindowOpen(c *Client) (err error) {
+func (h *Hkr) DECTDeactivateWindowOpen(c *Client) (err error) {
 	return h.deactivateHelper(c, "sethkrwindowopen")
 }
 
-func (h *Hkr) SetWindowOpen(c *Client, d time.Duration) (tm time.Time, err error) {
+func (h *Hkr) DECTSetWindowOpen(c *Client, d time.Duration) (tm time.Time, err error) {
 	return h.setEndpointHelper(c, d, "sethkrwindowopen")
 }
 
