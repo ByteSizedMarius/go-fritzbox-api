@@ -74,6 +74,9 @@ func (c *Client) GetCLientList() (clients Clientlist, err error) {
 		return
 	}
 
+	// conninfo is [[]] when empty, just [...] when full (bug)
+	body = strings.ReplaceAll(body, "conninfo\":[[]]", "conninfo\":[]")
+
 	// get json from response
 	body = strings.Split("{\"rootuid\""+strings.Split(body, "{\"rootuid\"")[1], "}},\"nexus\"")[0] + "}}"
 
