@@ -2,6 +2,7 @@ package go_fritzbox_api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/clbanning/mxj/v2"
 	"net/http"
@@ -56,6 +57,39 @@ func (t *Temperature) DECTGetCelsiusNumeric(c *Client) (float64, error) {
 	// update local device
 	t.Celsius = resp
 	return t.GetCelsiusNumeric(), nil
+}
+
+// DECTSetOffset || WARNING: Unstable || Uses frontend API, meaning that this may not work in past/future versions of Fritz!OS.
+func (t *Temperature) DECTSetOffset(c *Client, offset float64) (err error) {
+	if err = c.checkExpiry(); err != nil {
+		return
+	}
+
+	data := url.Values{
+		"sid":             {c.session.Sid},
+		"device":          {t.Device().ID},
+		"ule_device_name": {t.Device().Name},
+		"Offset":          {fmt.Sprintf("%.1f", offset)},
+		"oldpage":         {"/net/home_auto_hkr_edit.lua"}, // actually required (?)
+		"apply":           {""},
+	}
+
+	resp, err := c.doRequest(http.MethodPost, "data.lua", data)
+	if err != nil {
+		return
+	}
+
+	b, err := getBody(resp)
+	if err != nil {
+		return
+	}
+
+	if b != "{\"pid\":\"sh_dev\"}" {
+		return errors.New("potentially unsuccessfull (incompatibility)")
+	}
+
+	t.Offset = fmt.Sprintf("%.0f", offset*10)
+	return
 }
 
 // DECTGetDeviceStats returns the temperatures measured from the device in the last 24 hours
