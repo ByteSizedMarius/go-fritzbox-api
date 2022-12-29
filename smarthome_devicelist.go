@@ -11,7 +11,7 @@ import (
 )
 
 var maskTranslStr = []string{CHanfun, "", CLicht, "", CAlarm, CButton, CHKR, CEnergieMesser, CTempSensor, CSteckdose, CRepeater, CMikrofon, "", CHanfunUnit, "", CSchaltbar, CDimmbar, CLampeMitFarbtemp, CRollladen}
-var maskTransl = []Capability{HanFun{CapName: CHanfun}, nil, nil, nil, nil, nil, Hkr{CapName: CHKR}, nil, Temperature{CapName: CTempSensor}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}
+var maskTransl = []Capability{HanFun{CapName: CHanfun}, nil, nil, nil, nil, Button{CapName: CButton}, Hkr{CapName: CHKR}, nil, Temperature{CapName: CTempSensor}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}
 
 type Devicelist struct {
 	Version   string
@@ -142,6 +142,14 @@ func (dl *Devicelist) populateCapabilities(b []byte) error {
 		//	Alarm
 
 		//	Button
+		if dl.Devices[i].HasCapability(CButton) {
+			var c Capability
+			c, err = dl.Devices[i].Capabilities[CButton].fromJSON(currentDevice, &dl.Devices[i])
+			if err != nil {
+				return err
+			}
+			dl.Devices[i].Capabilities[CButton] = c
+		}
 
 		//	HKR
 		if dl.Devices[i].HasCapability(CHKR) {

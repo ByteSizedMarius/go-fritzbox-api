@@ -20,6 +20,9 @@ const (
 
 	// these keys are ignored when parsing han-fun units because they are already present in the device-struct
 	ignoreKeywords = "-functionbitmask,-fwversion,-id,-identifier,-manufacturer,-productname,name,present,txbusy,etsiunitinfo"
+
+	BPLong  = "lang"
+	BPShort = "kurz"
 )
 
 var (
