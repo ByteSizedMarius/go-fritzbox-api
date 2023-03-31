@@ -74,12 +74,12 @@ func (b Button) fromJSON(m map[string]json.RawMessage, d *SmarthomeDevice) (Capa
 	}
 
 	for i, bs := range b.Buttons {
-		if strings.Contains(bs.Name, BPLong) || strings.Contains(bs.Name, BPShort) {
+		if strings.Contains(bs.Name, EvTastendruckKurz) || strings.Contains(bs.Name, EvTastendruckLang) {
 			t := bs.Name[strings.LastIndex(bs.Name, ": ")+2:]
-			if t == BPShort {
-				bs.Type = BPShort
-			} else if t == BPLong {
-				bs.Type = BPLong
+			if t == EvTastendruckLang {
+				bs.Type = EvTastendruckLang
+			} else if t == EvTastendruckKurz {
+				bs.Type = EvTastendruckKurz
 			}
 			b.Buttons[i] = bs
 		} else {

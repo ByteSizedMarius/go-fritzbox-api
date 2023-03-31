@@ -4,12 +4,20 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
-	"strings"
 )
 
 // Note: I have since found out about landevice:settings/landevice/list but I do not currently want to implement it
 // It would break alot of things, have little benefit for me over the current method and I'm short on time currently
 // PRs welcome, but please don't break API (meaning it should be implemented additional to current method, current method can be marked as deprecated however)
+
+type response struct {
+	Data struct {
+		Topology struct {
+			Rootuid string                     `json:"rootuid"`
+			Devices map[string]json.RawMessage `json:"devices"`
+		}
+	}
+}
 
 type Clientlist struct {
 	Rootuid string `json:"rootuid"`
@@ -17,41 +25,60 @@ type Clientlist struct {
 }
 
 type Device struct {
-	Devid     string `json:"devid"`
-	Stateinfo struct {
+	UID             string `json:"UID"`
+	Parent          string `json:"parent"`
+	Category        string `json:"category"`
+	Profile         Profile
+	OwnClientDevice bool   `json:"own_client_device"`
+	Dist            int    `json:"dist"`
+	Switch          bool   `json:"switch"`
+	Devtype         string `json:"devtype"`
+	Ownentry        bool   `json:"ownentry"`
+	Stateinfo       struct {
 		GuestOwe        bool `json:"guest_owe"`
 		Active          bool `json:"active"`
+		Meshable        bool `json:"meshable"`
 		Guest           bool `json:"guest"`
 		Online          bool `json:"online"`
 		Blocked         bool `json:"blocked"`
 		Realtime        bool `json:"realtime"`
-		Notallowed      bool `json:"notallowed"`
+		NotalloWed      bool `json:"notallowed"`
 		InternetBlocked bool `json:"internetBlocked"`
-	} `json:"stateinfo,omitempty"`
-	Profile    Profile
-	Devtype    string   `json:"devtype"`
-	Dist       int      `json:"dist"`
-	Parent     string   `json:"parent"`
-	Category   string   `json:"category"`
-	Ownentry   bool     `json:"ownentry"`
-	UID        string   `json:"UID"`
-	Conn       string   `json:"conn"`
-	Master     bool     `json:"master"`
-	Ipinfo     []string `json:"ipinfo"`
+	} `json:"stateinfo"`
+	Conn       string `json:"conn"`
+	Master     bool   `json:"master"`
+	Detailinfo struct {
+		Edit struct {
+			Pid    string `json:"pid"`
+			Params struct {
+				Dev        string `json:"dev"`
+				BackToPage string `json:"back_to_page"`
+			} `json:"params"`
+		} `json:"edit"`
+		Portrelease bool `json:"portrelease"`
+	} `json:"detailinfo"`
 	Updateinfo struct {
 		State string `json:"state"`
 	} `json:"updateinfo"`
 	Gateway  bool `json:"gateway"`
 	Nameinfo struct {
 		Name string `json:"name"`
-	} `json:"nameinfo,omitempty"`
+	} `json:"nameinfo"`
 	Children []interface{} `json:"children"`
-	Conninfo []struct {
-		Speed   string `json:"speed"`
-		SpeedTx int    `json:"speed_tx"`
-		SpeedRx int    `json:"speed_rx"`
-		Desc    string `json:"desc"`
+	Conninfo struct {
+		Kind     string `json:"kind"`
+		Speed    string `json:"speed"`
+		Bandinfo []struct {
+			Band    int    `json:"band"`
+			SpeedTx int    `json:"speed_tx"`
+			SpeedRx int    `json:"speed_rx"`
+			Speed   string `json:"speed"`
+			Desc    string `json:"desc"`
+		} `json:"bandinfo"`
+		Usedbands int    `json:"usedbands"`
+		Desc      string `json:"desc"`
 	} `json:"conninfo"`
+	Ipinfo string `json:"ipinfo"`
 }
 
 func (c *Client) GetCLientList() (clients Clientlist, err error) {
@@ -60,11 +87,11 @@ func (c *Client) GetCLientList() (clients Clientlist, err error) {
 	}
 
 	data := url.Values{
-		"sid":         {c.session.Sid},
-		"updatecheck": {""},
+		"sid":  {c.session.Sid},
+		"page": {"homeNet"},
 	}
 
-	resp, err := c.doRequest(http.MethodGet, "net/network.lua", data)
+	resp, err := c.doRequest(http.MethodPost, "data.lua", data)
 	if err != nil {
 		return
 	}
@@ -74,38 +101,20 @@ func (c *Client) GetCLientList() (clients Clientlist, err error) {
 		return
 	}
 
-	// conninfo is [[]] when empty, just [...] when full (bug)
-	body = strings.ReplaceAll(body, "conninfo\":[[]]", "conninfo\":[]")
-
-	// get json from response
-	body = strings.Split("{\"rootuid\""+strings.Split(body, "{\"rootuid\"")[1], "}},\"nexus\"")[0] + "}}"
-
-	// get rid of top level
-	tmp := map[string]json.RawMessage{}
-	err = json.Unmarshal([]byte(body), &tmp)
+	r := response{}
+	err = json.Unmarshal([]byte(body), &r)
 	if err != nil {
 		return
 	}
 
-	// rootuid
-	err = json.Unmarshal(tmp["rootuid"], &clients.Rootuid)
-	if err != nil {
-		return
-	}
-
-	// parse devices
 	clients.Devices = []Device{}
-	err = json.Unmarshal(tmp["devices"], &tmp)
-	if err != nil {
-		return
-	}
-
-	for _, v := range tmp {
+	for _, v := range r.Data.Topology.Devices {
 		var d Device
 
 		err = json.Unmarshal(v, &d)
 		if err != nil {
 			// ignore errors because they will happen for devices not relevant here (dect)
+			// fmt.Println(string(v))
 			continue
 		}
 
