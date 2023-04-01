@@ -21,7 +21,7 @@ type Button struct {
 type ButtonPress struct {
 	ID                   string `json:"-id"`
 	Type                 string
-	Name                 string `json:"Name"`
+	Name                 string `json:"name"`
 	Identifier           string `json:"-identifier"`
 	LastPressedTimeStamp string `json:"lastpressedtimestamp"`
 }

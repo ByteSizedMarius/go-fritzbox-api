@@ -2,7 +2,8 @@
 
 AVM provides a
 semi-detailed [documentation](https://avm.de/fileadmin/user_upload/Global/Service/Schnittstellen/AHA-HTTP-Interface.pdf)
-for their http-interface used to control their DECT devices.
+for their http-interface used to control their DECT devices. I have included spelling errors from the documentation in
+the library for consistency.
 
 ## Checklist of fully implemented capabilities
 
@@ -13,16 +14,13 @@ it depends, just contact me.
 
 ### List of implemented endpoints
 
-Additional information is usually available, but does not have its own endpoint. Instead, it is included with the
-general
-capability-info.
-
 - [x] HanFunGerät (partially, see below)
 - [ ] Licht
 - [ ] Alarm
-- [ ] Button
+- [x] Button
 - [x] HKR (Heizkörperregler)
-    - Notes: The device takes some seconds to receive the command and then some more seconds/minutes to update the paperview
+    - Notes: The device takes some seconds to receive the command and then some more seconds/minutes to update the
+      paperview
       display. The device itself delivers the current temperature (Tist), but in order to refresh the current
       temperature, the `gettemperature`-endpoint from the `Temperature`-Capability should be used. Alternatively,
       use `Reload` in order to fetch and update all capability-values. This is similar to `IsWindowOpen`
@@ -61,14 +59,14 @@ capability-info.
 
 Boilerplate-Code is available for all interfaces.
 
-## Implementation
+## Usage & Implementation
 
 Every device has "function classes", which I call "capabilities". Every device can have multiple of these. For
 example, a radiator-controller (Heizungskörperregler/HKR) has the capabilities to control radiators and measure room
-temperature.
-This modular setup means, that the datatypes need to do the heavy lifting here.
+temperature. This modular setup means, that the datatypes need to do the heavy lifting.
 
-Every device has a map of capabilities, that are populated if available. The capabilities are accessed using
+Every device has a map of capabilities, that are populated if available and `nil` otherwise. The capabilities are
+accessed using
 string-constants that contain the description of the capability from the official documentation. This is what it looks
 like for a HKR:
 
@@ -81,7 +79,16 @@ Output:
 [Heizkörperregler, Temperatursensor]
 ```
 
-The capabilities and their respective functions can be accessed (among others) via the constants:
+Since Go 1.20, Generics can be used to access the capabilities directly. No casting required.
+
+```golang
+dl, _ := cl.GetSmarthomeDevices()
+d := dl.Devices[0]
+ts := GetCapability[*Temperature](d)
+fmt.Println(ts.Celsius)
+```
+
+Otherwise, they need to be accessed via the capability-map using the string-constants:
 
 ```golang
 if d.HasCapability(CTempSensor) {
@@ -112,10 +119,11 @@ Output:
 21.5
 ```
 
-**Only functions starting with `DECT` will fetch the data from the fritzbox and update the local object**, functions without it will
-return the locally stored value.
+**Only functions starting with `DECT` will fetch the data from the fritzbox and update the local object**, functions
+without it will return the locally stored value. Local values can be updated by calling the `Reload`-Function, either on
+the device or a single capability.
 
-Every device, irrespective of capabilities contains miscellaneous information:
+Every device, irrespective of capability, contains miscellaneous information:
 
 ```golang
 fmt.Println(d)

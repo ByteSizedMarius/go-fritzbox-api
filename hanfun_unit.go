@@ -88,34 +88,37 @@ func (h *HanFunUnit) Device() *SmarthomeDevice {
 	return h.device
 }
 
-func (h *HanFunUnit) fromJSON(m map[string]json.RawMessage, d *SmarthomeDevice) (*HanFunUnit, error) {
-	err := json.Unmarshal(m["etsiunitinfo"], &h.ETSIUnitInfo)
+func (*HanFunUnit) fromJSON(m map[string]json.RawMessage, d *SmarthomeDevice) (*HanFunUnit, error) {
+	hfu := &HanFunUnit{}
+	eui := ETSIUnitInfo{}
+	err := json.Unmarshal(m["etsiunitinfo"], &eui)
 	if err != nil {
-		return h, err
+		return hfu, err
 	}
+	hfu.ETSIUnitInfo = eui
 
 	// if interface is known, parse it
 	// otherwise its values are still accessible via RawProperties
-	i, ok := hanFunInterfaces[h.ETSIUnitInfo.Interface]
+	i, ok := hanFunInterfaces[hfu.ETSIUnitInfo.Interface]
 	if !ok {
-		fmt.Printf("Interface %s is not supported. Access values via RawProperties.", h.ETSIUnitInfo.Interface)
+		fmt.Printf("Interface %s is not supported. Access values via RawProperties.", hfu.ETSIUnitInfo.Interface)
 	} else {
-		h.Interface = i
-		h.Interface, err = h.Interface.fromJSON(m)
+		hfu.Interface = i
+		hfu.Interface, err = hfu.Interface.fromJSON(m)
 		if err != nil {
-			return h, err
+			return hfu, err
 		}
 	}
 
-	h.RawProperties = make(map[string]json.RawMessage)
+	hfu.RawProperties = make(map[string]json.RawMessage)
 	for k, v := range m {
 		if !strings.Contains(ignoreKeywords, k) {
-			h.RawProperties[k] = v
+			hfu.RawProperties[k] = v
 		}
 	}
 
-	h.device = d
-	return h, nil
+	hfu.device = d
+	return hfu, err
 }
 
 // -------------------------------------------
