@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -16,19 +17,22 @@ type TrafficStatistics struct {
 	ThisMonth TrafficForDuration `json:"ThisMonth"`
 }
 
-func (ts TrafficStatistics) String() string {
-	return fmt.Sprintf("LastMonth:\n%s\nThisWeek:\n%s\nToday:\n%s\nYesterday:\n%s\nThisMonth:\n%s", ts.LastMonth, ts.ThisWeek, ts.Today, ts.Yesterday, ts.ThisMonth)
+func (ts *TrafficStatistics) String() string {
+	return fmt.Sprintf("LastMonth:\n%s\nThisWeek:\n%s\nToday:\n%s\nYesterday:\n%s\nThisMonth:\n%s", &ts.LastMonth, &ts.ThisWeek, &ts.Today, &ts.Yesterday, &ts.ThisMonth)
 }
 
+// The TrafficForDuration struct contains network statistics. Only MBSent and MBReceived are real values. The rest are raw values returned by the backend.
 type TrafficForDuration struct {
 	BytesSentHigh     string `json:"BytesSentHigh"`
 	BytesSentLow      string `json:"BytesSentLow"`
 	BytesReceivedHigh string `json:"BytesReceivedHigh"`
 	BytesReceivedLow  string `json:"BytesReceivedLow"`
+	MBSent            int
+	MBReceived        int
 }
 
-func (tfd TrafficForDuration) String() string {
-	return fmt.Sprintf("\tBytesSentHigh: %s\n\tBytesSentLow: %s\n\tBytesReceivedHigh: %s\n\tBytesReceivedLow: %s", tfd.BytesSentHigh, tfd.BytesSentHigh, tfd.BytesReceivedHigh, tfd.BytesReceivedLow)
+func (tfd *TrafficForDuration) String() string {
+	return fmt.Sprintf("\tMB Sent: %d\n\tMB Received: %d", tfd.MBSent, tfd.MBReceived)
 }
 
 func (c *Client) GetTrafficStats() (ts TrafficStatistics, err error) {
@@ -53,5 +57,34 @@ func (c *Client) GetTrafficStats() (ts TrafficStatistics, err error) {
 
 	statsdata := body[strings.Index(body, "const data = {")+13:strings.Index(body, "};")] + "}"
 	err = json.Unmarshal([]byte(statsdata), &ts)
+	ts.calc()
+
 	return
+}
+
+func (ts *TrafficStatistics) calc() {
+	ts.LastMonth.calc()
+	ts.ThisWeek.calc()
+	ts.Today.calc()
+	ts.Yesterday.calc()
+	ts.ThisMonth.calc()
+}
+
+func (tfd *TrafficForDuration) calc() {
+	tfd.MBSent = combineBytes(tfd.BytesSentHigh, tfd.BytesSentLow) / 1000000
+	tfd.MBReceived = combineBytes(tfd.BytesReceivedHigh, tfd.BytesReceivedLow) / 1000000
+}
+
+func combineBytes(high, low string) int {
+	hI, err := strconv.Atoi(high)
+	if err != nil {
+		hI = 0
+	}
+
+	lI, err := strconv.Atoi(low)
+	if err != nil {
+		lI = 0
+	}
+
+	return hI*4294967296 + lI
 }

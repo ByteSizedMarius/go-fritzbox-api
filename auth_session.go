@@ -51,7 +51,7 @@ type session struct {
 	Challenge string        `xml:"Challenge"`
 	BlockTime time.Duration `xml:"BlockTime"`
 
-	// Rights' representation is a little bit tricky
+	// Rights' representation is a little tricky
 	RightsName   []string `xml:"Rights>Name"`
 	RightsAccess []int8   `xml:"Rights>Access"`
 
@@ -115,7 +115,7 @@ func (s *session) refresh() error {
 
 // ComputeResponse generates a response for challenge-response auth
 // with the given challenge and secret. It returns the reponse and
-// and an error, if any.
+// an error, if any.
 func computeResponse(challenge, secret string) (string, error) {
 	buf := new(bytes.Buffer)
 	h := md5.New()
@@ -135,7 +135,7 @@ func computeResponse(challenge, secret string) (string, error) {
 		}
 	}
 
-	io.Copy(h, buf)
+	_, _ = io.Copy(h, buf)
 	r := fmt.Sprintf("%s-%x", challenge, h.Sum(nil))
 
 	return r, nil

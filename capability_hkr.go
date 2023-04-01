@@ -38,11 +38,11 @@ type Hkr struct {
 // errorcodes taken from docs, 29.09.22
 var errorMap = map[string]string{"0": "no error", "1": "Keine Adaptierung möglich. Gerät korrekt am Heizkörper montiert?", "2": "Ventilhub zu kurz oder Batterieleistung zu schwach. Ventilstößel per Hand mehrmals öffnen und schließen oder neue Batterien einsetzen.", "3": "Keine Ventilbewegung möglich. Ventilstößel frei?", "4": "Die Installation wird gerade vorbereitet.", "5": "Der Heizkörperregler ist im Installationsmodus und kann auf das Heizungsventil montiert werden", "6": "Der Heizkörperregler passt sich nun an den Hub des Heizungsventils an"}
 
-func (h Hkr) Name() string {
+func (h *Hkr) Name() string {
 	return h.CapName
 }
 
-func (h Hkr) String() string {
+func (h *Hkr) String() string {
 	s := fmt.Sprintf("%s: {Temp-Soll: %s, Temp-Absenk: %s, Temp-Komfort: %s, Tastensperre: %s, Tastensperre (Gerät): %s, Error: %s, Fenster offen: %t, ", h.CapName, h.GetSoll(), h.GetAbsenk(), h.GetKomfort(), h.Lock, h.Devicelock, h.GetErrorString(), h.IsWindowOpen())
 	if h.IsWindowOpen() {
 		s += fmt.Sprintf("Fenster offen Ende: %s", h.GetWindowOpenEndtime())
@@ -57,7 +57,7 @@ func (h Hkr) String() string {
 	return s
 }
 
-func (h Hkr) Device() *SmarthomeDevice {
+func (h *Hkr) Device() *SmarthomeDevice {
 	return h.device
 }
 
@@ -67,13 +67,13 @@ func (h Hkr) Device() *SmarthomeDevice {
 //
 // -------------------------------------------
 
-// GetSollNumeric returns the current locally saved soll-temperature. It returns temperatures in celsius from 8-28, as well as -1 (MAX) -2 (OFF).
-func (h Hkr) GetSollNumeric() float64 {
+// GetSollNumeric returns the current locally saved soll-temperature. It returns temperatures in Celsius from 8-28, as well as -1 (MAX) -2 (OFF).
+func (h *Hkr) GetSollNumeric() float64 {
 	return temperatureHelper(h.Tsoll)
 }
 
 // GetSoll returns the same values as GetSollNumeric, but as a string. Instead of -1 and -2, it returns "OFF" or "MAX"
-func (h Hkr) GetSoll() (r string) {
+func (h *Hkr) GetSoll() (r string) {
 	s, _ := strconv.ParseFloat(h.Tsoll, 64)
 	if s == 253 {
 		r = "OFF"
@@ -112,12 +112,12 @@ func (h *Hkr) DECTGetSollNumeric(c *Client) (float64, error) {
 }
 
 // DECTSetSollMax turns the soll-temperature on. Allegedly, it should use the last known temperature. However, for me, it just sets the radiator to MAX.
-func (h Hkr) DECTSetSollMax(c *Client) error {
+func (h *Hkr) DECTSetSollMax(c *Client) error {
 	return h.setSollHelper(c, 254)
 }
 
 // DECTSetSollOff turns the soll-temperature off. The Hkr will show the snowflake in its display.
-func (h Hkr) DECTSetSollOff(c *Client) error {
+func (h *Hkr) DECTSetSollOff(c *Client) error {
 	return h.setSollHelper(c, 253)
 }
 
@@ -125,7 +125,7 @@ func (h Hkr) DECTSetSollOff(c *Client) error {
 // This method accepts float64/32, int and string (XX,X/ XX.X).
 // Values with additional decimal places will be rounded to XX.0/XX.5 respectively.
 // Only values from 8-28 are valid.
-func (h Hkr) DECTSetSoll(c *Client, sollTemp interface{}) error {
+func (h *Hkr) DECTSetSoll(c *Client, sollTemp interface{}) error {
 	var i float64 = 0
 	var err error
 
@@ -159,17 +159,17 @@ func (h Hkr) DECTSetSoll(c *Client, sollTemp interface{}) error {
 // -------------------------------------------
 
 // GetKomfort is similar to GetSoll
-func (h Hkr) GetKomfort() (r string) {
+func (h *Hkr) GetKomfort() (r string) {
 	return temperatureStringHelper(h.Komfort)
 }
 
 // GetKomfortNumeric is similar to GetSollNumeric
-func (h Hkr) GetKomfortNumeric() float64 {
+func (h *Hkr) GetKomfortNumeric() float64 {
 	return temperatureHelper(h.Komfort)
 }
 
 // DECTGetKomfort is similar to DECTGetSoll
-func (h Hkr) DECTGetKomfort(c *Client) (string, error) {
+func (h *Hkr) DECTGetKomfort(c *Client) (string, error) {
 	resp, err := dectGetter(c, "gethkrkomfort", h)
 	if err != nil {
 		return "", err
@@ -181,7 +181,7 @@ func (h Hkr) DECTGetKomfort(c *Client) (string, error) {
 }
 
 // DECTGetKomfortNumeric is similar to DECTGetSollNumeric
-func (h Hkr) DECTGetKomfortNumeric(c *Client) (float64, error) {
+func (h *Hkr) DECTGetKomfortNumeric(c *Client) (float64, error) {
 	_, err := h.DECTGetKomfort(c)
 	if err != nil {
 		return -1, err
@@ -197,17 +197,17 @@ func (h Hkr) DECTGetKomfortNumeric(c *Client) (float64, error) {
 // -------------------------------------------
 
 // GetAbsenk is similar to GetSoll
-func (h Hkr) GetAbsenk() (r string) {
+func (h *Hkr) GetAbsenk() (r string) {
 	return temperatureStringHelper(h.Absenk)
 }
 
 // GetAbsenkNumeric is similar to GetSollNumeric
-func (h Hkr) GetAbsenkNumeric() float64 {
+func (h *Hkr) GetAbsenkNumeric() float64 {
 	return temperatureHelper(h.Absenk)
 }
 
 // DECTGetAbsenk is similar to DECTGetSoll
-func (h Hkr) DECTGetAbsenk(c *Client) (string, error) {
+func (h *Hkr) DECTGetAbsenk(c *Client) (string, error) {
 	resp, err := dectGetter(c, "gethkrabsenk", h)
 	if err != nil {
 		return "", err
@@ -219,7 +219,7 @@ func (h Hkr) DECTGetAbsenk(c *Client) (string, error) {
 }
 
 // DECTGetAbsenkNumeric is similar to DECTGetSollNumeric
-func (h Hkr) DECTGetAbsenkNumeric(c *Client) (float64, error) {
+func (h *Hkr) DECTGetAbsenkNumeric(c *Client) (float64, error) {
 	_, err := h.DECTGetKomfort(c)
 	if err != nil {
 		return -1, err
@@ -237,10 +237,10 @@ func (h Hkr) DECTGetAbsenkNumeric(c *Client) (float64, error) {
 // IsBoostActive returns true, if the boost is currently active
 // No API-requests are made. Instead, all this does is convert the local value.
 // Only functions with the DECT-Prefix communicate with the fritzbox.
-func (h Hkr) IsBoostActive() bool { return h.Boostactive == "1" }
+func (h *Hkr) IsBoostActive() bool { return h.Boostactive == "1" }
 
 // GetBoostEndtime converts the endtime to a time-struct
-func (h Hkr) GetBoostEndtime() (t time.Time) {
+func (h *Hkr) GetBoostEndtime() (t time.Time) {
 	return unixStringToTime(h.Boostactiveendtime)
 }
 
@@ -260,9 +260,9 @@ func (h *Hkr) SetBoost(c *Client, d time.Duration) (tm time.Time, err error) {
 //
 // -------------------------------------------
 
-func (h Hkr) IsWindowOpen() bool { return h.Windowopenactiv == "1" }
+func (h *Hkr) IsWindowOpen() bool { return h.Windowopenactiv == "1" }
 
-func (h Hkr) GetWindowOpenEndtime() (t time.Time) {
+func (h *Hkr) GetWindowOpenEndtime() (t time.Time) {
 	return unixStringToTime(h.Windowopenactiveendtime)
 }
 
@@ -281,7 +281,7 @@ func (h *Hkr) DECTSetWindowOpen(c *Client, d time.Duration) (tm time.Time, err e
 // -------------------------------------------
 
 // GetErrorString returns the error-message for the respective error-code. Errorcode 0 means no error. The error-messages originate from the official docs.
-func (h Hkr) GetErrorString() string {
+func (h *Hkr) GetErrorString() string {
 	s, ok := errorMap[h.Errorcode]
 	if !ok {
 		return "unknown error: " + h.Errorcode
@@ -296,17 +296,17 @@ func (h Hkr) GetErrorString() string {
 // -------------------------------------------
 
 // GetNextChangeTemperatureNumeric returns the temperature, that the next change will set it to (numeric)
-func (h Hkr) GetNextChangeTemperatureNumeric() float64 {
+func (h *Hkr) GetNextChangeTemperatureNumeric() float64 {
 	return temperatureHelper(h.Nextchange.Tchange)
 }
 
 // GetNextChangeTemperature returns the temperature, that the next change will set it to (as string)
-func (h Hkr) GetNextChangeTemperature() string {
+func (h *Hkr) GetNextChangeTemperature() string {
 	return temperatureStringHelper(h.Nextchange.Tchange)
 }
 
 // GetNextchangeEndtime returns the time of the next temperature-change
-func (h Hkr) GetNextchangeEndtime() (t time.Time) {
+func (h *Hkr) GetNextchangeEndtime() (t time.Time) {
 	return unixStringToTime(h.Nextchange.Endperiod)
 }
 
@@ -339,12 +339,28 @@ func (h *Hkr) Reload(c *Client) error {
 	}
 
 	// update current capability
-	th := tt.(Hkr)
-	*h = th
+	th := tt.(*Hkr)
+	h.CapName = th.CapName
+	h.Tsoll = th.Tsoll
+	h.Absenk = th.Absenk
+	h.Komfort = th.Komfort
+	h.Lock = th.Lock
+	h.Devicelock = th.Devicelock
+	h.Errorcode = th.Errorcode
+	h.Windowopenactiv = th.Windowopenactiv
+	h.Windowopenactiveendtime = th.Windowopenactiveendtime
+	h.Boostactive = th.Boostactive
+	h.Boostactiveendtime = th.Boostactiveendtime
+	h.Batterylow = th.Batterylow
+	h.Battery = th.Battery
+	h.Nextchange = th.Nextchange
+	h.Summeractive = th.Summeractive
+	h.Holidayactive = th.Holidayactive
+	h.device = th.device
 	return nil
 }
 
-func (h Hkr) fromJSON(m map[string]json.RawMessage, d *SmarthomeDevice) (Capability, error) {
+func (h *Hkr) fromJSON(m map[string]json.RawMessage, d *SmarthomeDevice) (Capability, error) {
 	err := json.Unmarshal(m["hkr"], &h)
 	if err != nil {
 		return h, err
@@ -354,7 +370,7 @@ func (h Hkr) fromJSON(m map[string]json.RawMessage, d *SmarthomeDevice) (Capabil
 	return h, nil
 }
 
-func (h Hkr) setSollHelper(c *Client, sollTemp float64) error {
+func (h *Hkr) setSollHelper(c *Client, sollTemp float64) error {
 	data := url.Values{
 		"sid":       {c.SID()},
 		"ain":       {h.Device().Identifier},

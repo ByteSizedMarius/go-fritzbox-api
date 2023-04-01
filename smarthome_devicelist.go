@@ -10,8 +10,8 @@ import (
 	"strings"
 )
 
-var maskTranslStr = []string{CHanfun, "", CLicht, "", CAlarm, CButton, CHKR, CEnergieMesser, CTempSensor, CSteckdose, CRepeater, CMikrofon, "", CHanfunUnit, "", CSchaltbar, CDimmbar, CLampeMitFarbtemp, CRollladen}
-var maskTransl = []Capability{HanFun{CapName: CHanfun}, nil, nil, nil, nil, Button{CapName: CButton}, Hkr{CapName: CHKR}, nil, Temperature{CapName: CTempSensor}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}
+var MaskTranslStr = []string{CHanfun, "", CLicht, "", CAlarm, CButton, CHKR, CEnergieMesser, CTempSensor, CSteckdose, CRepeater, CMikrofon, "", CHanfunUnit, "", CSchaltbar, CDimmbar, CLampeMitFarbtemp, CRollladen}
+var MaskTransl = []Capability{&HanFun{CapName: CHanfun}, nil, nil, nil, nil, &Button{CapName: CButton}, &Hkr{CapName: CHKR}, nil, &Temperature{CapName: CTempSensor}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}
 
 type Devicelist struct {
 	Version   string
@@ -25,7 +25,7 @@ func (dl *Devicelist) Reload(c *Client) error {
 		return err
 	}
 
-	var tdl Devicelist
+	var tdl *Devicelist
 	tdl, err = dl.fromReader(r)
 	if err != nil {
 		return err
@@ -37,7 +37,7 @@ func (dl *Devicelist) Reload(c *Client) error {
 	return nil
 }
 
-func (dl Devicelist) String() string {
+func (dl *Devicelist) String() string {
 	rt := ""
 	for _, d := range dl.Devices {
 		rt += d.String() + ", "
@@ -123,8 +123,8 @@ func (dl *Devicelist) populateCapabilities(b []byte) error {
 					}
 
 					// add unit
-					fun := c.(HanFun)
-					var unit HanFunUnit
+					fun := c.(*HanFun)
+					var unit *HanFunUnit
 					unit, err = fun.unitFromJSON(dev, &hfDevice)
 					if err != nil {
 						return err
@@ -195,16 +195,16 @@ func (dl *Devicelist) populateCapabilities(b []byte) error {
 	return nil
 }
 
-func (Devicelist) fromDeviceList(dlt extDevicelist) Devicelist {
-	return Devicelist{
+func (*Devicelist) fromDeviceList(dlt extDevicelist) *Devicelist {
+	return &Devicelist{
 		Version:   dlt.Version,
 		Fwversion: dlt.Fwversion,
 	}
 }
 
-func (Devicelist) devicesFromExtDevices(devices []extDevice) (dl []SmarthomeDevice, err error) {
+func (*Devicelist) devicesFromExtDevices(devices []extDevice) (dl []SmarthomeDevice, err error) {
 	for _, d := range devices {
-		nd := SmarthomeDevice{}.fromDevice(d)
+		nd := (&SmarthomeDevice{}).fromDevice(d)
 		nd.Capabilities, err = nd.Capabilities.fromBitmask(d.Functionbitmask)
 		if err != nil {
 			fmt.Println(err)
@@ -217,7 +217,7 @@ func (Devicelist) devicesFromExtDevices(devices []extDevice) (dl []SmarthomeDevi
 	return
 }
 
-func (Devicelist) fromReader(r io.ReadCloser) (dl Devicelist, err error) {
+func (*Devicelist) fromReader(r io.ReadCloser) (dl *Devicelist, err error) {
 	bytes, err := io.ReadAll(r)
 	if err != nil {
 		return
@@ -226,7 +226,7 @@ func (Devicelist) fromReader(r io.ReadCloser) (dl Devicelist, err error) {
 	dlt, err := extDevicelist{}.fromBytes(bytes)
 
 	// translate extDevicelist
-	dl = Devicelist{}.fromDeviceList(dlt)
+	dl = dl.fromDeviceList(dlt)
 	dl.Devices, err = dl.devicesFromExtDevices(dlt.Device)
 
 	err = dl.populateCapabilities(bytes)

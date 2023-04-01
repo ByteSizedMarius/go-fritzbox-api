@@ -6,7 +6,6 @@ package go_fritzbox_api
 * Copyright (c) 2015 Philipp Franke
 *
 * Modified by ByteSizedMarius (2022)
-* Code remains under MIT license (can be found in the LICENSE file)
 *
  */
 
@@ -15,7 +14,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -198,7 +197,7 @@ func (c *Client) get(urlStr string) (req *http.Request, err error) {
 	return req, nil
 }
 
-func (c Client) IsInitialized() bool {
+func (c *Client) IsInitialized() bool {
 	return c.client != nil
 }
 
@@ -214,7 +213,7 @@ func (c *Client) String() string {
 	return c.session.String()
 }
 
-// auth sends a auth request and returns an error, if any. session is stored
+// auth sends an auth request and returns an error, if any. session is stored
 // in Client in order to perform requests with authentification.
 func (c *Client) auth(username, password string) error {
 	var s *session
@@ -260,20 +259,6 @@ func getBody(resp *http.Response) (body string, err error) {
 	return strings.Trim(string(bodyBytes), "\n"), nil
 }
 
-func printRequestBody(req *http.Request) {
-	if req.Body == nil {
-		return
-	}
-
-	b, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Printf("%s", b)
-	fmt.Println()
-}
-
 func getUntil(main string, split string) string {
 	return main[:strings.Index(main, split)]
 }
@@ -284,4 +269,23 @@ func getFrom(main string, split string) string {
 
 func getFromOffset(main string, split string, offset int) string {
 	return main[strings.Index(main, split)+offset:]
+}
+
+func valueFromJson(body string, keys []string) (v map[string]interface{}, err error) {
+	err = json.Unmarshal([]byte(body), &v)
+	if err != nil {
+		if e, ok := err.(*json.SyntaxError); ok {
+			log.Printf("syntax error at byte offset %d", e.Offset)
+		}
+
+		return
+	}
+
+	var r map[string]interface{}
+	r = v[keys[0]].(map[string]interface{})
+	for i := 1; i < len(keys); i++ {
+		r = r[keys[i]].(map[string]interface{})
+	}
+
+	return r, nil
 }

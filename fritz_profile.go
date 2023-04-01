@@ -8,12 +8,12 @@ import (
 )
 
 type Profile struct {
-	name   string
-	uid    string
-	filter string
+	Name   string
+	UID    string
+	Filter string
 }
 
-// GetAvailableProfiles returns a map, where the Profile-Object is accessible via the profile-uid
+// GetAvailableProfiles returns a map, where the Profile-Object is accessible via the profile-UID
 func (c *Client) GetAvailableProfiles() (profiles map[string]Profile, err error) {
 	if err = c.checkExpiry(); err != nil {
 		return
@@ -44,27 +44,27 @@ func (c *Client) GetAvailableProfiles() (profiles map[string]Profile, err error)
 	for strings.Contains(body, "class=\"name\"") {
 		p := Profile{}
 
-		// profile name
+		// profile Name
 		body = body[strings.Index(body, "class=\"name\"")+7:]
 		body = body[strings.Index(body, "title=")+7:]
-		p.name = body[:strings.Index(body, "\"")]
+		p.Name = body[:strings.Index(body, "\"")]
 
 		// filters
 		body = body[strings.Index(body, "datalabel=\"Filter\"")+19:]
-		p.filter = strings.TrimSpace(body[:strings.Index(body, "<")])
+		p.Filter = strings.TrimSpace(body[:strings.Index(body, "<")])
 
-		// profile uid
+		// profile UID
 		body = body[strings.Index(body, "name=\"delete\"")+14:]
 		body = body[strings.Index(body, "value=")+7:]
-		p.uid = body[:strings.Index(body, "\"")]
+		p.UID = body[:strings.Index(body, "\"")]
 
-		profiles[p.uid] = p
+		profiles[p.UID] = p
 	}
 
 	return
 }
 
-// GetProfileUIDFromDevice returns the uid of the profile that is assigned to the given device
+// GetProfileUIDFromDevice returns the UID of the profile that is assigned to the given device
 // The return can be empty, for example for the fritzbox itself. This should be accounted for.
 func (c *Client) GetProfileUIDFromDevice(deviceUID string) (profileUID string, err error) {
 	if err = c.checkExpiry(); err != nil {
@@ -116,19 +116,19 @@ func (c *Client) SetProfileForDevice(deviceUID string, profileUID string) (err e
 		"apply":                 {""},
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "data.lua", data)
+	_, err = c.doRequest(http.MethodPost, "data.lua", data)
 	if err != nil {
 		return
 	}
 
-	body, err := getBody(resp)
+	body, err := c.getEditInfos(deviceUID)
 	if err != nil {
 		return
 	}
 
-	if !strings.Contains(body, "\"apply\":\"ok\"") {
-		err = fmt.Errorf("unknown error when applying profile: %s", body)
+	v, err := valueFromJson(body, []string{"data", "vars", "dev", "netAccess", "kisi", "profiles"})
+	if v["selected"] != profileUID {
+		err = fmt.Errorf("unknown error when applying profile")
 	}
-
 	return
 }

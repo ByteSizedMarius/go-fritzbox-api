@@ -8,12 +8,12 @@ for their http-interface used to control their DECT devices.
 
 I won't implement devices I do not own. Any help in completing this list is appreciated.
 See [Contributing](README.md#contributing) or just open a PR. You can take the already implemented capabilities as a
-template or make them better. I've previously had someone ask, if they can send me a device --
+template or make them better. I've previously had someone ask if they can send me a device --
 it depends, just contact me.
 
 ### List of implemented endpoints
 
-Additional information is usually available, but does not have it's own endpoint. Instead, it is included with the
+Additional information is usually available, but does not have its own endpoint. Instead, it is included with the
 general
 capability-info.
 

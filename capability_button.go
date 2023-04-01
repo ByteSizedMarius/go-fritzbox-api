@@ -21,7 +21,7 @@ type Button struct {
 type ButtonPress struct {
 	ID                   string `json:"-id"`
 	Type                 string
-	Name                 string `json:"name"`
+	Name                 string `json:"Name"`
 	Identifier           string `json:"-identifier"`
 	LastPressedTimeStamp string `json:"lastpressedtimestamp"`
 }
@@ -39,12 +39,16 @@ func (b *Button) Reload(c *Client) error {
 	}
 
 	// update current capability
-	th := tt.(Button)
-	*b = th
+	th := tt.(*Button)
+	b.CapName = th.CapName
+	b.Buttons = th.Buttons
+	b.Batterylow = th.Batterylow
+	b.Battery = th.Battery
+	b.device = th.device
 	return nil
 }
 
-func (b Button) String() string {
+func (b *Button) String() string {
 	s := fmt.Sprintf("%s: {[", b.CapName)
 	for _, bp := range b.Buttons {
 		s += bp.String() + ", "
@@ -56,15 +60,15 @@ func (bp ButtonPress) String() string {
 	return fmt.Sprintf("{ID: %s, Name: %s, Button-Typ: %s, Identifier: %s, zuletzt betätigt: %s}", bp.ID, bp.Name, bp.Type, bp.Identifier, bp.GetLastPressTime())
 }
 
-func (b Button) Name() string {
+func (b *Button) Name() string {
 	return b.CapName
 }
 
-func (b Button) Device() *SmarthomeDevice {
+func (b *Button) Device() *SmarthomeDevice {
 	return b.device
 }
 
-func (b Button) fromJSON(m map[string]json.RawMessage, d *SmarthomeDevice) (Capability, error) {
+func (b *Button) fromJSON(m map[string]json.RawMessage, d *SmarthomeDevice) (Capability, error) {
 	b.Batterylow = string(m["batterylow"])
 	b.Batterylow = string(m["battery"])
 

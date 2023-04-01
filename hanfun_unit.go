@@ -9,8 +9,7 @@ import (
 )
 
 type HanFunUnit struct {
-	// Saves all properties of the unit in raw json-messages. Does not include values already represented (values present in the device-struct, as well as etsi-unit-info)
-	RawProperties map[string]json.RawMessage
+	RawProperties map[string]json.RawMessage // Saves all properties of the unit in raw json-messages. Does not include values already represented (values present in the device-struct, as well as etsi-unit-info)
 	ETSIUnitInfo  ETSIUnitInfo
 
 	Interface HFInterface
@@ -23,9 +22,13 @@ type ETSIUnitInfo struct {
 	UnitType     string `json:"unittype"`
 }
 
+// -------------------------------------------
+// Han Fun Implementation
+// -------------------------------------------
+
 // IsUnitOfType returns true if the units' interface is of the given type
 // For example [...].IsUnitOfType(HFAlert{})
-func (h HanFunUnit) IsUnitOfType(t interface{}) bool {
+func (h *HanFunUnit) IsUnitOfType(t interface{}) bool {
 	if reflect.TypeOf(h.Interface) == reflect.TypeOf(t) {
 		return true
 	}
@@ -49,13 +52,15 @@ func (h *HanFunUnit) Reload(c *Client) error {
 		return err
 	}
 
-	// update current capability
-	*h = tt
+	h.RawProperties = tt.RawProperties
+	h.ETSIUnitInfo = tt.ETSIUnitInfo
+	h.Interface = tt.Interface
+
 	return nil
 }
 
 // UnmarshalProperty unmarshals a property into the given interface
-func (h HanFunUnit) UnmarshalProperty(propertyKey string, dest interface{}) error {
+func (h *HanFunUnit) UnmarshalProperty(propertyKey string, dest interface{}) error {
 	_, ok := h.RawProperties[propertyKey]
 	if ok {
 		err := json.Unmarshal(h.RawProperties[propertyKey], dest)
@@ -66,7 +71,7 @@ func (h HanFunUnit) UnmarshalProperty(propertyKey string, dest interface{}) erro
 }
 
 // GetRawProperties returns the local interface-values as a string in json.
-func (h HanFunUnit) GetRawProperties() (s map[string]string, err error) {
+func (h *HanFunUnit) GetRawProperties() (s map[string]string, err error) {
 	s = make(map[string]string)
 	for k, v := range h.RawProperties {
 		s[k] = string(v)
@@ -75,29 +80,15 @@ func (h HanFunUnit) GetRawProperties() (s map[string]string, err error) {
 	return
 }
 
-// GetInterfaceString returns the units interface-type as a string (values taken from documentation)
-func (e ETSIUnitInfo) GetInterfaceString() string {
-	return hanFunInterfacesStr[e.Interface]
-}
-
-// GetUnitString returns the units type as a string (values taken from documentation)
-func (e ETSIUnitInfo) GetUnitString() string {
-	return hanFunUnitTypes[e.UnitType]
-}
-
-func (h HanFunUnit) String() string {
+func (h *HanFunUnit) String() string {
 	return fmt.Sprintf("{ETSI Units Info: %s, Interface: %s, Device: %s}", h.ETSIUnitInfo, h.Interface, h.Device())
 }
 
-func (h HanFunUnit) Device() *SmarthomeDevice {
+func (h *HanFunUnit) Device() *SmarthomeDevice {
 	return h.device
 }
 
-func (e ETSIUnitInfo) String() string {
-	return fmt.Sprintf("{ETSI-Device-ID: %s, Interface-Type: %s (%s), Units-Type: %s (%s)}", e.ETSIDeviceID, e.GetInterfaceString(), e.Interface, e.GetUnitString(), e.UnitType)
-}
-
-func (h HanFunUnit) fromJSON(m map[string]json.RawMessage, d *SmarthomeDevice) (HanFunUnit, error) {
+func (h *HanFunUnit) fromJSON(m map[string]json.RawMessage, d *SmarthomeDevice) (*HanFunUnit, error) {
 	err := json.Unmarshal(m["etsiunitinfo"], &h.ETSIUnitInfo)
 	if err != nil {
 		return h, err
@@ -125,4 +116,22 @@ func (h HanFunUnit) fromJSON(m map[string]json.RawMessage, d *SmarthomeDevice) (
 
 	h.device = d
 	return h, nil
+}
+
+// -------------------------------------------
+// Unit Info
+// -------------------------------------------
+
+// GetInterfaceString returns the units interface-type as a string (values taken from documentation)
+func (e ETSIUnitInfo) GetInterfaceString() string {
+	return hanFunInterfacesStr[e.Interface]
+}
+
+// GetUnitString returns the units type as a string (values taken from documentation)
+func (e ETSIUnitInfo) GetUnitString() string {
+	return hanFunUnitTypes[e.UnitType]
+}
+
+func (e ETSIUnitInfo) String() string {
+	return fmt.Sprintf("{ETSI-Device-ID: %s, Interface-Type: %s (%s), Units-Type: %s (%s)}", e.ETSIDeviceID, e.GetInterfaceString(), e.Interface, e.GetUnitString(), e.UnitType)
 }

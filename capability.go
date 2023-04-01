@@ -10,7 +10,7 @@ import (
 )
 
 // Capabilities is a map of all available capabilities.
-// They can be access using using the Capability-Constants (starting with C, for example CHKR -> HeizungsKörperRegler, etc.)
+// They can be access using the Capability-Constants (starting with C, for example CHKR -> HeizungsKörperRegler, etc.)
 // HasCapability can be used to check whether a device has a certain capability, without checking the map-keys.
 type Capabilities map[string]Capability
 
@@ -81,7 +81,7 @@ func (c Capabilities) fromBitmask(bitmask string) (Capabilities, error) {
 	for i := len(bitRepr) - 1; i >= 0; i-- {
 		if string(bitRepr[i]) == "1" {
 			ind := len(bitRepr) - i - 1
-			c[maskTranslStr[ind]] = maskTransl[ind]
+			c[MaskTranslStr[ind]] = MaskTransl[ind]
 		}
 	}
 

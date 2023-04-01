@@ -19,7 +19,7 @@ type SmarthomeDevice struct {
 	Capabilities Capabilities
 }
 
-func (d SmarthomeDevice) String() string {
+func (d *SmarthomeDevice) String() string {
 	t := fmt.Sprintf("{Devicename: %s, Identifier: %s, ID: %s, Productname: %s, Manufacturer: %s, Firmware-Version: %s, Present: %s, TX busy: %s", d.Name, d.Identifier, d.ID, d.Productname, d.Manufacturer, d.Fwversion, d.Present, d.Txbusy)
 	if fmt.Sprint(d.Capabilities) != "[]" {
 		t += fmt.Sprintf(", Capabilities: %s", d.Capabilities)
@@ -29,12 +29,12 @@ func (d SmarthomeDevice) String() string {
 }
 
 // HasCapability returns true, if device has given capability. Use capability-constants.
-func (d SmarthomeDevice) HasCapability(cap string) bool {
+func (d *SmarthomeDevice) HasCapability(cap string) bool {
 	_, ok := d.Capabilities[cap]
 	return ok
 }
 
-// DECTGetName fetches device-name from the fritzbox and updates internally stored value.
+// DECTGetName fetches device-Name from the fritzbox and updates internally stored value.
 func (d *SmarthomeDevice) DECTGetName(c *Client) (string, error) {
 	data := url.Values{
 		"sid":       {c.SID()},
@@ -53,13 +53,13 @@ func (d *SmarthomeDevice) DECTGetName(c *Client) (string, error) {
 	return resp, nil
 }
 
-// DECTSetName updates device name based on identifier and updates internal values if successful
+// DECTSetName updates device Name based on identifier and updates internal values if successful
 func (d *SmarthomeDevice) DECTSetName(c *Client, name string) error {
 	data := url.Values{
 		"sid":       {c.SID()},
 		"ain":       {d.Identifier},
 		"switchcmd": {"setname"},
-		"name":      {name},
+		"Name":      {name},
 	}
 
 	code, resp, err := c.CustomRequest(http.MethodGet, "webservices/homeautoswitch.lua", data)
@@ -98,11 +98,11 @@ func (d *SmarthomeDevice) DECTIsSwitchPrsent(c *Client) (bool, error) {
 }
 
 // IsSwitchPrsent returns true if device is present. Uses locally stored value.
-func (d SmarthomeDevice) IsSwitchPrsent() bool {
+func (d *SmarthomeDevice) IsSwitchPrsent() bool {
 	return d.Present == "1"
 }
 
-func (SmarthomeDevice) fromDevice(d extDevice) SmarthomeDevice {
+func (*SmarthomeDevice) fromDevice(d extDevice) SmarthomeDevice {
 	return SmarthomeDevice{
 		Identifier:   d.Identifier,
 		ID:           d.ID,

@@ -23,7 +23,7 @@ type extDevice struct {
 	Productname     string `xml:"productname,attr"`
 	Present         string `xml:"present"`
 	Txbusy          string `xml:"txbusy"`
-	Name            string `xml:"name"`
+	Name            string `xml:"Name"`
 }
 
 func (extDevicelist) fromBytes(b []byte) (dlt extDevicelist, err error) {

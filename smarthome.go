@@ -8,16 +8,16 @@ import (
 	"net/url"
 )
 
-func (c *Client) GetSmarthomeDevices() (dl Devicelist, err error) {
+func (c *Client) GetSmarthomeDevices() (dl *Devicelist, err error) {
 	r, err := doRequest(c)
 	if err != nil {
 		return
 	}
 
-	return Devicelist{}.fromReader(r)
+	return dl.fromReader(r)
 }
 
-func (c *Client) GetSmarthomeDevicesFilter(requiredCapabilities []string) (dl Devicelist, err error) {
+func (c *Client) GetSmarthomeDevicesFilter(requiredCapabilities []string) (dl *Devicelist, err error) {
 	dl, err = c.GetSmarthomeDevices()
 	if err != nil {
 		return
