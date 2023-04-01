@@ -32,18 +32,21 @@ func (t *Temperature) Reload(c *Client) error {
 	}
 
 	// update current capability
-	th := tt.(Temperature)
-	*t = th
+	th := tt.(*Temperature)
+	t.CapName = th.CapName
+	t.Celsius = th.Celsius
+	t.Offset = th.Offset
+	t.device = th.device
 	return nil
 }
 
 // GetCelsiusNumeric returns the temperature reading in float converted to the usual format (eg. 21.5)
-func (t Temperature) GetCelsiusNumeric() float64 {
+func (t *Temperature) GetCelsiusNumeric() float64 {
 	return toTemp(t.Celsius)
 }
 
 // GetOffsetNumeric returns the temperature offset set for the device in float converted to the usual format (eg. 21.5)
-func (t Temperature) GetOffsetNumeric() float64 {
+func (t *Temperature) GetOffsetNumeric() float64 {
 	return toTemp(t.Offset)
 }
 
@@ -93,7 +96,7 @@ func (t *Temperature) DECTSetOffset(c *Client, offset float64) (err error) {
 }
 
 // DECTGetDeviceStats returns the temperatures measured from the device in the last 24 hours
-func (t Temperature) DECTGetDeviceStats(c *Client) (ts TemperatureStats, err error) {
+func (t *Temperature) DECTGetDeviceStats(c *Client) (ts TemperatureStats, err error) {
 	data := url.Values{
 		"sid":       {c.SID()},
 		"ain":       {t.Device().Identifier},
@@ -135,19 +138,19 @@ func (ts TemperatureStats) String() string {
 	return fmt.Sprintf("Temperature-Stats: {Amount of Values: %d, Amount of Seconds between Measurements: %d, Measurements: %v}", ts.AmountOfValues, ts.SecondsBetweenMeasurements, ts.Values)
 }
 
-func (t Temperature) Name() string {
+func (t *Temperature) Name() string {
 	return t.CapName
 }
 
-func (t Temperature) String() string {
+func (t *Temperature) String() string {
 	return fmt.Sprintf("%s: {Celsius: %f, Offset: %f}", t.CapName, t.GetCelsiusNumeric(), t.GetOffsetNumeric())
 }
 
-func (t Temperature) Device() *SmarthomeDevice {
+func (t *Temperature) Device() *SmarthomeDevice {
 	return t.device
 }
 
-func (t Temperature) fromJSON(m map[string]json.RawMessage, d *SmarthomeDevice) (Capability, error) {
+func (t *Temperature) fromJSON(m map[string]json.RawMessage, d *SmarthomeDevice) (Capability, error) {
 	err := json.Unmarshal(m["temperature"], &t)
 	if err != nil {
 		return t, err

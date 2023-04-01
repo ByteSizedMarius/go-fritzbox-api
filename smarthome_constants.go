@@ -19,7 +19,7 @@ const (
 	CRollladen        = "Rollladen(Blind) - hoch, runter, stop und level 0% bis 100 %"
 
 	// these keys are ignored when parsing han-fun units because they are already present in the device-struct
-	ignoreKeywords = "-functionbitmask,-fwversion,-id,-identifier,-manufacturer,-productname,name,present,txbusy,etsiunitinfo"
+	ignoreKeywords = "-functionbitmask,-fwversion,-id,-identifier,-manufacturer,-productname,Name,present,txbusy,etsiunitinfo"
 
 	EvTastendruckKurz = "lang"
 	EvTastendruckLang = "kurz"
