@@ -11,21 +11,20 @@ import (
 )
 
 var MaskTranslStr = []string{CHanfun, "", CLicht, "", CAlarm, CButton, CHKR, CEnergieMesser, CTempSensor, CSteckdose, CRepeater, CMikrofon, "", CHanfunUnit, "", CSchaltbar, CDimmbar, CLampeMitFarbtemp, CRollladen}
-var MaskTransl = []Capability{&HanFun{CapName: CHanfun}, nil, nil, nil, nil, &Button{CapName: CButton}, &Hkr{CapName: CHKR}, nil, &Temperature{CapName: CTempSensor}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}
 
-type Devicelist struct {
+type SHDevicelist struct {
 	Version   string
 	Fwversion string
 	Devices   []SmarthomeDevice
 }
 
-func (dl *Devicelist) Reload(c *Client) error {
+func (dl *SHDevicelist) Reload(c *Client) error {
 	r, err := doRequest(c)
 	if err != nil {
 		return err
 	}
 
-	var tdl *Devicelist
+	var tdl *SHDevicelist
 	tdl, err = dl.fromReader(r)
 	if err != nil {
 		return err
@@ -37,15 +36,18 @@ func (dl *Devicelist) Reload(c *Client) error {
 	return nil
 }
 
-func (dl *Devicelist) String() string {
+func (dl *SHDevicelist) String() string {
 	rt := ""
 	for _, d := range dl.Devices {
 		rt += d.String() + ", "
 	}
-	return fmt.Sprintf("Version: %s, Firmware-Version: %s Devices: [%s]", dl.Version, dl.Fwversion, rt[:len(rt)-2])
+	if rt != "" {
+		rt = rt[:len(rt)-2]
+	}
+	return fmt.Sprintf("Version: %s, Firmware-Version: %s Devices: [%s]", dl.Version, dl.Fwversion, rt)
 }
 
-func (dl *Devicelist) populateCapabilities(b []byte) error {
+func (dl *SHDevicelist) populateCapabilities(b []byte) error {
 	var err error
 
 	mv, err := mxj.NewMapXml(b)
@@ -195,21 +197,18 @@ func (dl *Devicelist) populateCapabilities(b []byte) error {
 	return nil
 }
 
-func (*Devicelist) fromDeviceList(dlt extDevicelist) *Devicelist {
-	return &Devicelist{
+func (*SHDevicelist) fromDeviceList(dlt extDevicelist) *SHDevicelist {
+	return &SHDevicelist{
 		Version:   dlt.Version,
 		Fwversion: dlt.Fwversion,
 	}
 }
 
-func (*Devicelist) devicesFromExtDevices(devices []extDevice) (dl []SmarthomeDevice, err error) {
+// devicesFromExtDevices translates a list of extDevices to a list of SmarthomeDevices
+// This requires the parsing of all available raw information into defined structs
+func (*SHDevicelist) devicesFromExtDevices(devices []extDevice) (dl []SmarthomeDevice, err error) {
 	for _, d := range devices {
 		nd := (&SmarthomeDevice{}).fromDevice(d)
-		nd.Capabilities, err = nd.Capabilities.fromBitmask(d.Functionbitmask)
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
 
 		dl = append(dl, nd)
 	}
@@ -217,17 +216,17 @@ func (*Devicelist) devicesFromExtDevices(devices []extDevice) (dl []SmarthomeDev
 	return
 }
 
-func (*Devicelist) fromReader(r io.ReadCloser) (dl *Devicelist, err error) {
+func (*SHDevicelist) fromReader(r io.ReadCloser) (dl *SHDevicelist, err error) {
 	bytes, err := io.ReadAll(r)
 	if err != nil {
 		return
 	}
 
-	dlt, err := extDevicelist{}.fromBytes(bytes)
+	edl, err := extDevicelist{}.fromBytes(bytes)
 
 	// translate extDevicelist
-	dl = dl.fromDeviceList(dlt)
-	dl.Devices, err = dl.devicesFromExtDevices(dlt.Device)
+	dl = dl.fromDeviceList(edl)
+	dl.Devices, err = dl.devicesFromExtDevices(edl.Device)
 
 	err = dl.populateCapabilities(bytes)
 	if err != nil {

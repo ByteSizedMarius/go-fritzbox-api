@@ -65,6 +65,8 @@ func capabilityMapFromString(s string) (m map[string]json.RawMessage, err error)
 	return
 }
 
+// fromBitmask puts empty capability-structs into the capability map where applicable.
+// The bitmask is used to decide which capabilities are available for a device.
 func (c Capabilities) fromBitmask(bitmask string) (Capabilities, error) {
 	var err error
 
@@ -81,7 +83,28 @@ func (c Capabilities) fromBitmask(bitmask string) (Capabilities, error) {
 	for i := len(bitRepr) - 1; i >= 0; i-- {
 		if string(bitRepr[i]) == "1" {
 			ind := len(bitRepr) - i - 1
-			c[MaskTranslStr[ind]] = MaskTransl[ind]
+			var nc Capability
+			switch MaskTranslStr[ind] {
+			case CHanfun:
+				nc = &HanFun{CapName: CHanfun}
+			// case CLicht
+			// case CAlarm
+			case CButton:
+				nc = &Button{CapName: CButton}
+			case CHKR:
+				nc = &Hkr{CapName: CHKR}
+			// case CEnergieMesser
+			case CTempSensor:
+				nc = &Temperature{CapName: CTempSensor}
+				// case CSteckdose
+				// case CRepeater
+				// case CMikrofon
+				// case CSchaltbar
+				// case CDimmbar
+				// case CLampeMitFarbTemp
+				// case CRollladen
+			}
+			c[MaskTranslStr[ind]] = nc
 		}
 	}
 

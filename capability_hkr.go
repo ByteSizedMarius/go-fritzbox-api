@@ -133,6 +133,12 @@ func (h *Hkr) DECTSetSoll(c *Client, sollTemp interface{}) error {
 	case int:
 		i = float64(sollTemp.(int))
 	case string:
+		if sollTemp == "OFF" {
+			return h.DECTSetSollOff(c)
+		} else if sollTemp == "MAX" {
+			return h.DECTSetSollMax(c)
+		}
+
 		if strings.Contains(sollTemp.(string), ",") {
 			sollTemp = strings.Replace(sollTemp.(string), ",", ".", 1)
 		}
@@ -371,18 +377,20 @@ func (h *Hkr) fromJSON(m map[string]json.RawMessage, d *SmarthomeDevice) (Capabi
 }
 
 func (h *Hkr) setSollHelper(c *Client, sollTemp float64) error {
+	if sollTemp != 253 && sollTemp != 254 {
+		sollTemp *= 2
+	}
+
 	data := url.Values{
 		"sid":       {c.SID()},
 		"ain":       {h.Device().Identifier},
 		"switchcmd": {"sethkrtsoll"},
-		"param":     {fmt.Sprintf("%.1f", (math.Round(sollTemp/0.5)*0.5)*2)},
+		"param":     {fmt.Sprintf("%.1f", math.Round(sollTemp/0.5)*0.5)},
 	}
 
-	code, resp, err := c.CustomRequest(http.MethodGet, "webservices/homeautoswitch.lua", data)
+	_, resp, err := c.CustomRequest(http.MethodGet, "webservices/homeautoswitch.lua", data)
 	if err != nil {
 		return err
-	} else if code != 200 {
-		return fmt.Errorf("unknown error: " + resp)
 	}
 
 	h.Tsoll = resp
@@ -456,11 +464,8 @@ func (h *Hkr) setEndpointHelper(c *Client, d time.Duration, endpoint string) (tm
 		"endtimestamp": {ts},
 	}
 
-	code, resp, err := c.CustomRequest(http.MethodGet, "webservices/homeautoswitch.lua", data)
+	_, resp, err := c.CustomRequest(http.MethodGet, "webservices/homeautoswitch.lua", data)
 	if err != nil {
-		return
-	} else if code != 200 {
-		err = fmt.Errorf("unknown error: " + resp)
 		return
 	}
 

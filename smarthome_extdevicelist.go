@@ -1,32 +1,46 @@
 package go_fritzbox_api
 
 import (
-	"encoding/xml"
+	"encoding/json"
+	"github.com/clbanning/mxj/v2"
 )
 
 // extDeviceList is used for easily parsing the fritzbox's xml into a go-struct, then transforming it usable structs (Devicelist, Device)
 type extDevicelist struct {
-	XMLName   xml.Name    `xml:"devicelist"`
-	Text      string      `xml:",chardata"`
-	Version   string      `xml:"version,attr"`
-	Fwversion string      `xml:"fwversion,attr"`
-	Device    []extDevice `xml:"device"`
+	Version   string      `json:"-version"`
+	Fwversion string      `json:"-fwversion"`
+	Device    []extDevice `json:"device"`
 }
 
 type extDevice struct {
-	Text            string `xml:",chardata"`
-	Identifier      string `xml:"identifier,attr"`
-	ID              string `xml:"id,attr"`
-	Functionbitmask string `xml:"functionbitmask,attr"`
-	Fwversion       string `xml:"fwversion,attr"`
-	Manufacturer    string `xml:"manufacturer,attr"`
-	Productname     string `xml:"productname,attr"`
-	Present         string `xml:"present"`
-	Txbusy          string `xml:"txbusy"`
-	Name            string `xml:"Name"`
+	Functionbitmask string `json:"-functionbitmask"`
+	Fwversion       string `json:"-fwversion"`
+	ID              string `json:"-id"`
+	Identifier      string `json:"-identifier"`
+	Manufacturer    string `json:"-manufacturer"`
+	Productname     string `json:"-productname"`
+	Name            string `json:"name"`
+	Present         string `json:"present"`
+	Txbusy          string `json:"txbusy"`
 }
 
 func (extDevicelist) fromBytes(b []byte) (dlt extDevicelist, err error) {
-	err = xml.Unmarshal(b, &dlt)
+	mv, err := mxj.NewMapXml(b)
+	if err != nil {
+		return
+	}
+
+	j, err := mv.Json(true)
+	if err != nil {
+		return
+	}
+
+	tmp := map[string]json.RawMessage{}
+	err = json.Unmarshal(j, &tmp)
+	if err != nil {
+		return
+	}
+
+	err = json.Unmarshal(tmp["devicelist"], &dlt)
 	return
 }

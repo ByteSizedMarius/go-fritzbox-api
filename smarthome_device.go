@@ -1,6 +1,7 @@
 package go_fritzbox_api
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -17,6 +18,60 @@ type SmarthomeDevice struct {
 	Name         string
 	Present      string
 	Capabilities Capabilities
+}
+
+func GetCapability[C Capability](d SmarthomeDevice) (r C) {
+	for _, c := range d.Capabilities {
+		switch c.(type) {
+		case C:
+			return c.(C)
+		}
+	}
+	return
+}
+
+func (d *SmarthomeDevice) Reload(cl *Client) error {
+	var data map[string]json.RawMessage
+	err := cl.GetDeviceInfos(d.Identifier, &data)
+	if err != nil {
+		return err
+	}
+
+	var ed extDevice
+	err = json.Unmarshal(data["device"], &ed)
+	if err != nil {
+		return err
+	}
+	var nd SmarthomeDevice
+	nd = nd.fromDevice(ed)
+
+	var devicedata map[string]json.RawMessage
+	err = json.Unmarshal(data["device"], &devicedata)
+	if err != nil {
+		return err
+	}
+
+	for k, v := range d.Capabilities {
+		var c Capability
+		c, err = v.fromJSON(devicedata, d)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
+		nd.Capabilities[k] = c
+	}
+
+	d.Identifier = nd.Identifier
+	d.ID = nd.ID
+	d.Fwversion = nd.Fwversion
+	d.Manufacturer = nd.Manufacturer
+	d.Productname = nd.Productname
+	d.Txbusy = nd.Txbusy
+	d.Name = nd.Name
+	d.Present = nd.Present
+	d.Capabilities = nd.Capabilities
+	return nil
 }
 
 func (d *SmarthomeDevice) String() string {
@@ -59,7 +114,7 @@ func (d *SmarthomeDevice) DECTSetName(c *Client, name string) error {
 		"sid":       {c.SID()},
 		"ain":       {d.Identifier},
 		"switchcmd": {"setname"},
-		"Name":      {name},
+		"name":      {name},
 	}
 
 	code, resp, err := c.CustomRequest(http.MethodGet, "webservices/homeautoswitch.lua", data)
@@ -102,7 +157,13 @@ func (d *SmarthomeDevice) IsSwitchPrsent() bool {
 	return d.Present == "1"
 }
 
+// fromDevice converts a extDevice to a SmarthomeDevice. This includes parsing the capabilities from the given Bitmask.
 func (*SmarthomeDevice) fromDevice(d extDevice) SmarthomeDevice {
+	cpb, err := Capabilities{}.fromBitmask(d.Functionbitmask)
+	if err != nil {
+		fmt.Println(err)
+	}
+
 	return SmarthomeDevice{
 		Identifier:   d.Identifier,
 		ID:           d.ID,
@@ -112,6 +173,6 @@ func (*SmarthomeDevice) fromDevice(d extDevice) SmarthomeDevice {
 		Txbusy:       d.Txbusy,
 		Name:         d.Name,
 		Present:      d.Present,
-		Capabilities: Capabilities{},
+		Capabilities: cpb,
 	}
 }

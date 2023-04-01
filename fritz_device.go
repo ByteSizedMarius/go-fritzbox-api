@@ -44,7 +44,7 @@ type Device struct {
 	} `json:"updateinfo"`
 	Gateway  bool `json:"gateway"`
 	Nameinfo struct {
-		Name string `json:"Name"`
+		Name string `json:"name"`
 	} `json:"nameinfo"`
 	Children []interface{} `json:"children"`
 	Conninfo struct {

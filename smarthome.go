@@ -8,7 +8,7 @@ import (
 	"net/url"
 )
 
-func (c *Client) GetSmarthomeDevices() (dl *Devicelist, err error) {
+func (c *Client) GetSmarthomeDevices() (dl *SHDevicelist, err error) {
 	r, err := doRequest(c)
 	if err != nil {
 		return
@@ -17,7 +17,7 @@ func (c *Client) GetSmarthomeDevices() (dl *Devicelist, err error) {
 	return dl.fromReader(r)
 }
 
-func (c *Client) GetSmarthomeDevicesFilter(requiredCapabilities []string) (dl *Devicelist, err error) {
+func (c *Client) GetSmarthomeDevicesFilter(requiredCapabilities []string) (dl *SHDevicelist, err error) {
 	dl, err = c.GetSmarthomeDevices()
 	if err != nil {
 		return
