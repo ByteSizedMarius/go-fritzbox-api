@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 type response struct {
@@ -40,6 +41,9 @@ func (c *Client) GetCLientList() (clients DeviceList, err error) {
 		return
 	}
 
+	// remove empty conninfo array, otherwise json.Unmarshal will fail (inconsistent types)
+	body = strings.ReplaceAll(body, ",\"conninfo\":[]", "")
+
 	r := response{}
 	err = json.Unmarshal([]byte(body), &r)
 	if err != nil {
@@ -53,7 +57,8 @@ func (c *Client) GetCLientList() (clients DeviceList, err error) {
 		err = json.Unmarshal(v, &d)
 		if err != nil {
 			// ignore errors because they will happen for devices not relevant here (dect)
-			// fmt.Println(string(v))
+			//fmt.Println(string(v))
+			//fmt.Println(err)
 			continue
 		}
 
