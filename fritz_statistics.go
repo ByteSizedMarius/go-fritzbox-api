@@ -71,11 +71,11 @@ func (ts *TrafficStatistics) calc() {
 }
 
 func (tfd *TrafficForDuration) calc() {
-	tfd.MBSent = combineBytes(tfd.BytesSentHigh, tfd.BytesSentLow) / 1000000
-	tfd.MBReceived = combineBytes(tfd.BytesReceivedHigh, tfd.BytesReceivedLow) / 1000000
+	tfd.MBSent = int(combineBytes(tfd.BytesSentHigh, tfd.BytesSentLow) / 1000000)
+	tfd.MBReceived = int(combineBytes(tfd.BytesReceivedHigh, tfd.BytesReceivedLow) / 1000000)
 }
 
-func combineBytes(high, low string) int {
+func combineBytes(high, low string) float64 {
 	hI, err := strconv.Atoi(high)
 	if err != nil {
 		hI = 0
@@ -86,5 +86,5 @@ func combineBytes(high, low string) int {
 		lI = 0
 	}
 
-	return hI*4294967296 + lI
+	return float64(hI)*float64(4294967296) + float64(lI)
 }
