@@ -22,10 +22,6 @@ type DeviceList struct {
 }
 
 func (c *Client) GetCLientList() (clients DeviceList, err error) {
-	if err = c.checkExpiry(); err != nil {
-		return
-	}
-
 	data := url.Values{
 		"sid":  {c.session.Sid},
 		"page": {"homeNet"},
@@ -67,6 +63,49 @@ func (c *Client) GetCLientList() (clients DeviceList, err error) {
 		}
 	}
 	err = nil
+
+	return
+}
+
+func (c *Client) AddMACs(cl *DeviceList) (err error) {
+	data := url.Values{
+		"sid":   {c.session.Sid},
+		"page":  {"netDev"},
+		"xhrId": {"all"},
+	}
+
+	resp, err := c.doRequest(http.MethodPost, "data.lua", data)
+	if err != nil {
+		return
+	}
+
+	body, err := getBody(resp)
+	if err != nil {
+		return
+	}
+
+	type macResponse struct {
+		Data struct {
+			Active []struct {
+				UID string
+				Mac string
+			}
+		}
+	}
+
+	r := macResponse{}
+	err = json.Unmarshal([]byte(body), &r)
+	if err != nil {
+		return
+	}
+
+	for i, d := range cl.Devices {
+		for _, v := range r.Data.Active {
+			if d.UID == v.UID {
+				cl.Devices[i].MAC = v.Mac
+			}
+		}
+	}
 
 	return
 }
