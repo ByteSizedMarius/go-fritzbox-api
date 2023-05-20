@@ -15,6 +15,7 @@ type Device struct {
 	Dist            int    `json:"dist"`
 	Switch          bool   `json:"switch"`
 	Devtype         string `json:"devtype"`
+	MAC             string `json:"mac"` // Note: AddMACs must be called for this field to not be empty
 	Ownentry        bool   `json:"ownentry"`
 	Stateinfo       struct {
 		GuestOwe        bool `json:"guest_owe"`
