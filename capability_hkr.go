@@ -3,6 +3,7 @@ package go_fritzbox_api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/anaskhan96/soup"
 	"math"
 	"net/http"
 	"net/url"
@@ -30,9 +31,18 @@ type Hkr struct {
 		Endperiod string `json:"endperiod"`
 		Tchange   string `json:"tchange"`
 	} `json:"nextchange"`
-	Summeractive  string `json:"summeractive"`  // 1 if summer is currently active
-	Holidayactive string `json:"holidayactive"` // same as summer
-	device        *SmarthomeDevice
+	Summeractive    string     `json:"summeractive"`  // 1 if summer is currently active
+	SummerTimeSet   bool       `json:"-"`             // true if summer-time is set, call FetchSummerTime on Device to fill it. If false, SummerTimeFrame does not return real values.
+	SummerTimeFrame SummerTime `json:"-"`             // value is empty by default, call FetchSummerTime on Device to fill it
+	Holidayactive   string     `json:"holidayactive"` // same as summer
+	device          *SmarthomeDevice
+}
+
+type SummerTime struct {
+	StartDay   string
+	StartMonth string
+	EndDay     string
+	EndMonth   string
 }
 
 // errorcodes taken from docs, 29.09.22
@@ -314,6 +324,77 @@ func (h *Hkr) GetNextChangeTemperature() string {
 // GetNextchangeEndtime returns the time of the next temperature-change
 func (h *Hkr) GetNextchangeEndtime() (t time.Time) {
 	return unixStringToTime(h.Nextchange.Endperiod)
+}
+
+// -------------------------------------------
+//
+// Unstable
+//
+// -------------------------------------------
+
+func (h *Hkr) FetchSummerTime(c *Client) (err error) {
+	if err = c.checkExpiry(); err != nil {
+		return
+	}
+
+	data := url.Values{
+		"sid":    {c.session.Sid},
+		"page":   {"home_auto_hkr_edit"},
+		"device": {h.device.ID},
+	}
+
+	resp, err := c.doRequest(http.MethodPost, "data.lua", data)
+	if err != nil {
+		return
+	}
+
+	body, err := getBody(resp)
+	if err != nil {
+		return
+	}
+
+	doc := soup.HTMLParse(body)
+	row := doc.Find("tr", "id", "uiSummerEnabledRow")
+	if row.Error != nil || row.Attrs()["style"] == "display:none;" {
+		h.SummerTimeSet = false
+		return
+	}
+	h.SummerTimeSet = true
+
+	ssd := row.Find("input", "id", "uiSummerStartDay")
+	ssm := row.Find("input", "id", "uiSummerStartMonth")
+
+	sed := row.Find("input", "id", "uiSummerEndDay")
+	sem := row.Find("input", "id", "uiSummerEndMonth")
+
+	if ssd.Error != nil || ssm.Error != nil || sed.Error != nil || sem.Error != nil {
+		return fmt.Errorf("%s", "Some required Inputs not found")
+	}
+
+	h.SummerTimeFrame = SummerTime{
+		StartDay:   ssd.Attrs()["value"],
+		StartMonth: ssm.Attrs()["value"],
+		EndDay:     sed.Attrs()["value"],
+		EndMonth:   sem.Attrs()["value"],
+	}
+
+	return nil
+}
+
+func dateHelper(month string, day string) time.Time {
+	monthNr, _ := strconv.Atoi(month)
+	dayNr, _ := strconv.Atoi(day)
+
+	now := time.Now()
+	return time.Date(now.Year(), time.Month(monthNr), dayNr, 0, 0, 0, 0, time.UTC)
+}
+
+func (stf SummerTime) GetStartDate() time.Time {
+	return dateHelper(stf.StartMonth, stf.StartDay)
+}
+
+func (stf SummerTime) GetEndDate() time.Time {
+	return dateHelper(stf.EndMonth, stf.EndDay)
 }
 
 // -------------------------------------------
