@@ -50,7 +50,7 @@ func (c *Client) GetDeviceInfos(devIdentifier string, dest interface{}) (err err
 		"ain":       {devIdentifier},
 	}
 
-	resp, err := c.doRequest(http.MethodGet, "webservices/homeautoswitch.lua", data)
+	resp, err := c.doRequest(http.MethodGet, "webservices/homeautoswitch.lua", data, true)
 	if err != nil {
 		return err
 	}

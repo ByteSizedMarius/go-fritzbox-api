@@ -69,7 +69,7 @@ func newSession(c *Client) *session {
 
 // open retrieves the challenge from FRITZ!Box.
 func (s *session) open() error {
-	return s.client.requestAndDecode(http.MethodGet, "login_sid.lua", nil, s)
+	return s.client.requestAndDecode(http.MethodGet, "login_sid.lua", nil, s, false)
 }
 
 // auth sends the Response (Challenge-Response) to the FRITZ!Box and
@@ -80,7 +80,7 @@ func (s *session) auth(username, password string) error {
 		return err
 	}
 
-	err = s.client.requestAndDecode(http.MethodPost, "login_sid.lua", url.Values{"username": {username}, "response": {cr}}, s)
+	err = s.client.requestAndDecode(http.MethodPost, "login_sid.lua", url.Values{"username": {username}, "response": {cr}}, s, false)
 	if err != nil {
 		return err
 	}

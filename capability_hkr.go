@@ -333,17 +333,13 @@ func (h *Hkr) GetNextchangeEndtime() (t time.Time) {
 // -------------------------------------------
 
 func (h *Hkr) FetchSummerTime(c *Client) (err error) {
-	if err = c.checkExpiry(); err != nil {
-		return
-	}
-
 	data := url.Values{
 		"sid":    {c.session.Sid},
 		"page":   {"home_auto_hkr_edit"},
 		"device": {h.device.ID},
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "data.lua", data)
+	resp, err := c.doRequest(http.MethodPost, "data.lua", data, true)
 	if err != nil {
 		return
 	}
