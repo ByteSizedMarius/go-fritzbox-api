@@ -40,7 +40,7 @@ func (c *Client) GetTrafficStats() (ts TrafficStatistics, err error) {
 		"sid": {c.session.Sid},
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "internet/inetstat_counter.lua", data)
+	resp, err := c.doRequest(http.MethodPost, "internet/inetstat_counter.lua", data, true)
 	if err != nil {
 		return
 	}

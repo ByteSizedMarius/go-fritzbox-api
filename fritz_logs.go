@@ -29,7 +29,7 @@ func (c *Client) GetEventLog() (logEvents []LogMessage, err error) {
 		"page": {"log"},
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "data.lua", data)
+	resp, err := c.doRequest(http.MethodPost, "data.lua", data, true)
 	if err != nil {
 		return
 	}

@@ -88,7 +88,7 @@ func (c *Client) SetIP(deviceUID string, ip string, static bool) (err error) {
 		"page":        {"edit_device"},
 	}
 
-	_, err = c.doRequest(http.MethodPost, "data.lua", data)
+	_, err = c.doRequest(http.MethodPost, "data.lua", data, true)
 	if err != nil {
 		return
 	}
@@ -110,7 +110,7 @@ func (c *Client) SetName(deviceUID string, newName string) (err error) {
 		"page":     {"edit_device"},
 	}
 
-	_, err = c.doRequest(http.MethodPost, "data.lua", data)
+	_, err = c.doRequest(http.MethodPost, "data.lua", data, true)
 	if err != nil {
 		return
 	}
@@ -128,7 +128,7 @@ func (c *Client) getEditInfos(deviceUID string) (body string, err error) {
 		"page": {"edit_device"},
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "data.lua", data)
+	resp, err := c.doRequest(http.MethodPost, "data.lua", data, true)
 	if err != nil {
 		return
 	}

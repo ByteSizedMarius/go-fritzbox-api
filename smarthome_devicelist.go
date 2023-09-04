@@ -242,7 +242,7 @@ func doRequest(c *Client) (io.ReadCloser, error) {
 		"switchcmd": {"getdevicelistinfos"},
 	}
 
-	resp, err := c.doRequest(http.MethodGet, "webservices/homeautoswitch.lua", data)
+	resp, err := c.doRequest(http.MethodGet, "webservices/homeautoswitch.lua", data, true)
 	if err != nil {
 		return nil, err
 	}

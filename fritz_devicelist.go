@@ -27,7 +27,7 @@ func (c *Client) GetCLientList() (clients DeviceList, err error) {
 		"page": {"homeNet"},
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "data.lua", data)
+	resp, err := c.doRequest(http.MethodPost, "data.lua", data, true)
 	if err != nil {
 		return
 	}
@@ -74,7 +74,7 @@ func (c *Client) AddMACs(cl *DeviceList) (err error) {
 		"xhrId": {"all"},
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "data.lua", data)
+	resp, err := c.doRequest(http.MethodPost, "data.lua", data, true)
 	if err != nil {
 		return
 	}

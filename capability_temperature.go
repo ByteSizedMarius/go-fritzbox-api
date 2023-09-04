@@ -64,10 +64,6 @@ func (t *Temperature) DECTGetCelsiusNumeric(c *Client) (float64, error) {
 
 // DECTSetOffset || WARNING: Unstable || Uses frontend API, meaning that this may not work in past/future versions of Fritz!OS.
 func (t *Temperature) DECTSetOffset(c *Client, offset float64) (err error) {
-	if err = c.checkExpiry(); err != nil {
-		return
-	}
-
 	data := url.Values{
 		"sid":             {c.session.Sid},
 		"device":          {t.Device().ID},
@@ -77,7 +73,7 @@ func (t *Temperature) DECTSetOffset(c *Client, offset float64) (err error) {
 		"apply":           {""},
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "data.lua", data)
+	resp, err := c.doRequest(http.MethodPost, "data.lua", data, true)
 	if err != nil {
 		return
 	}

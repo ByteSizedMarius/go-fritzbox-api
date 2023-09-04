@@ -84,11 +84,7 @@ func (c *Client) Close() {
 // CustomRequest allows one to send a custom request. The method can be http.MethodPost or http.MethodGet.
 // The urlPath should always only be the path (for example "data.lua"), get-queries are set via the data-field. See examples.
 func (c *Client) CustomRequest(method string, urlPath string, data url.Values) (statusCode int, body string, err error) {
-	if err = c.checkExpiry(); err != nil {
-		return
-	}
-
-	resp, err := c.doRequest(method, urlPath, data)
+	resp, err := c.doRequest(method, urlPath, data, true)
 	if err != nil {
 		return
 	}
@@ -104,8 +100,8 @@ func (c *Client) CustomRequest(method string, urlPath string, data url.Values) (
 //
 //
 
-func (c *Client) requestAndDecode(method string, urlStr string, data url.Values, mystruct interface{}) (err error) {
-	resp, err := c.doRequest(method, urlStr, data)
+func (c *Client) requestAndDecode(method string, urlStr string, data url.Values, mystruct interface{}, checkExpiry bool) (err error) {
+	resp, err := c.doRequest(method, urlStr, data, checkExpiry)
 	if err != nil {
 		return err
 	}
@@ -113,12 +109,12 @@ func (c *Client) requestAndDecode(method string, urlStr string, data url.Values,
 	return decode(resp, mystruct)
 }
 
-func (c *Client) doRequest(method string, urlStr string, data url.Values) (resp *http.Response, err error) {
+func (c *Client) doRequest(method string, urlStr string, data url.Values, checkExpiry bool) (resp *http.Response, err error) {
 
 	// refresh session potentially
-	if c.session != nil {
-		if err = c.session.refresh(); err != nil {
-			return nil, err
+	if checkExpiry {
+		if err = c.checkExpiry(); err != nil {
+			return
 		}
 	}
 
@@ -202,7 +198,7 @@ func (c *Client) IsInitialized() bool {
 }
 
 func (c *Client) checkExpiry() (err error) {
-	if c.IsInitialized() && c.session.isExpired() || !c.IsInitialized() {
+	if (c.IsInitialized() && c.session.isExpired()) || !c.IsInitialized() {
 		err = c.Initialize()
 	}
 

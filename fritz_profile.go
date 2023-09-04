@@ -23,7 +23,7 @@ func (c *Client) GetAvailableProfiles() (profiles map[string]Profile, err error)
 		"sid": {c.session.Sid},
 	}
 
-	resp, err := c.doRequest(http.MethodGet, "internet/kids_profilelist.lua", data)
+	resp, err := c.doRequest(http.MethodGet, "internet/kids_profilelist.lua", data, true)
 	if err != nil {
 		return
 	}
@@ -78,7 +78,7 @@ func (c *Client) GetProfileUIDFromDevice(deviceUID string) (profileUID string, e
 	}
 
 	// todo check if theres some interesting info in this query
-	resp, err := c.doRequest(http.MethodPost, "data.lua", data)
+	resp, err := c.doRequest(http.MethodPost, "data.lua", data, true)
 	if err != nil {
 		return
 	}
@@ -104,10 +104,6 @@ func (c *Client) GetProfileUIDFromDevice(deviceUID string) (profileUID string, e
 // SetProfileForDevice (mainly untested) sets the profile from the profileUID to the device with the given deviceUID.
 // Assigning the guest-Profile does not work when guest-wifi is off (makes sense), otherwise it might work
 func (c *Client) SetProfileForDevice(deviceUID string, profileUID string) (err error) {
-	if err = c.checkExpiry(); err != nil {
-		return
-	}
-
 	data := url.Values{
 		"sid":                   {c.session.Sid},
 		"edit":                  {profileUID},
@@ -116,7 +112,7 @@ func (c *Client) SetProfileForDevice(deviceUID string, profileUID string) (err e
 		"apply":                 {""},
 	}
 
-	_, err = c.doRequest(http.MethodPost, "data.lua", data)
+	_, err = c.doRequest(http.MethodPost, "data.lua", data, true)
 	if err != nil {
 		return
 	}
