@@ -332,6 +332,8 @@ func (h *Hkr) GetNextchangeEndtime() (t time.Time) {
 //
 // -------------------------------------------
 
+// FetchSummerTime fetches the SummerTime-Frame for the HKR. It does not return anything, but instead fills the SummerTimeFrame-Field for the Hkr.
+// If Pya is already initialized and logged in, using the Function PyaFetchSummertime is generally preferable.
 func (h *Hkr) FetchSummerTime(c *Client) (err error) {
 	data := url.Values{
 		"sid":    {c.session.Sid},
@@ -385,12 +387,224 @@ func dateHelper(month string, day string) time.Time {
 	return time.Date(now.Year(), time.Month(monthNr), dayNr, 0, 0, 0, 0, time.UTC)
 }
 
+// GetStartDate returns a formatted time.Time-Struct for the Start of the SummerTime-Frame
 func (stf SummerTime) GetStartDate() time.Time {
 	return dateHelper(stf.StartMonth, stf.StartDay)
 }
 
+// GetEndDate returns a formatted time.Time-Struct for the End of the SummerTime-Frame
 func (stf SummerTime) GetEndDate() time.Time {
 	return dateHelper(stf.EndMonth, stf.EndDay)
+}
+
+// -------------------------------------------
+//
+// Py Adapter Functions
+//
+// -------------------------------------------
+
+// PyaSetSummerTime sets the SummerTime for the HKR.
+// Only Day/Month of the Time-Values is required. The Helper-Method TimeFromDM can be used to create the Time-Values.
+func (h *Hkr) PyaSetSummerTime(pya *PyAdapter, start time.Time, end time.Time) (err error) {
+	data, err := h.pyaPrepare(pya)
+	if err != nil {
+		return
+	}
+
+	data["SummerEndDay"] = ToUrlValue(end.Day())
+	data["SummerEndMonth"] = ToUrlValue(end.Month())
+	data["SummerStartDay"] = ToUrlValue(start.Day())
+	data["SummerStartMonth"] = ToUrlValue(start.Month())
+
+	_, err = pya.Client.doRequest(http.MethodPost, "data.lua", data, true)
+	return
+}
+
+// PyaSetZeitschaltung sets the Zeitschaltung for the HKR.
+// Please see the Documentation for Zeitschaltung.
+func (h *Hkr) PyaSetZeitschaltung(pya *PyAdapter, z Zeitschaltung) (err error) {
+	err = z.Validate()
+	if err != nil {
+		return
+	}
+
+	data, err := h.pyaPrepare(pya)
+	if err != nil {
+		return
+	}
+
+	slots := z.ToValues()
+	for k, v := range slots {
+		data[k] = ToUrlValue(v)
+	}
+
+	_, err = pya.Client.doRequest(http.MethodPost, "data.lua", data, true)
+	return
+}
+
+// PyaFetchSummertime fetches the SummerTimeFrame. It does not return anything, but instead fills the SummerTimeFrame-Field for the Hkr.
+// This Method is preferred over FetchSummerTime, as it does not require parsing the HTML-Response, thus, hopefully
+// making it more stable.
+func (h *Hkr) PyaFetchSummertime(pya *PyAdapter) (err error) {
+	data, err := h.pyaPrepare(pya)
+	if err != nil {
+		return
+	}
+
+	h.SummerTimeFrame = SummerTime{
+		StartDay:   data["SummerStartDay"][0],
+		StartMonth: data["SummerStartMonth"][0],
+		EndDay:     data["SummerEndDay"][0],
+		EndMonth:   data["SummerEndMonth"][0],
+	}
+	return
+}
+
+func (h *Hkr) pyaPrepare(pya *PyAdapter) (data url.Values, err error) {
+	params, err := pya.GetArgsHKR(*h)
+	if err != nil {
+		return
+	}
+
+	data = url.Values{
+		"sid": {pya.Client.SID()},
+	}
+
+	for k, v := range params {
+		data[k] = []string{v}
+	}
+
+	return data, nil
+}
+
+// -------------------------------------------
+//
+// PyAdapter Zeitschaltung (UNSTABLE)
+//
+// -------------------------------------------
+
+// todo: Slots can be simplified. The third value in the timer_item-string is used to determine, to which days the timer_item applies
+// if a similar start/end time is applied to multiple different days, this value can be set to the sum of the respective days
+// it doesnt seem to matter from what I can tell, it's just shorter
+
+// Zeitschaltung is a struct that holds the Values for the HKR-Timer in the Format that is expected by the Fritzbox.
+// It consists of all days of the week, which in turn consist of ZeitSlots.
+type Zeitschaltung struct {
+	Tage []Tag
+}
+
+// Tag is a Part of Zeitschaltung. Every Tag has a Weekday and a list of ZeitSlots.
+type Tag struct {
+	Tag   time.Weekday
+	Slots []ZeitSlot
+}
+
+// ZeitSlot is a Part of Tag. It consists of a Start and End time of the given Slot.
+type ZeitSlot struct {
+	Start time.Time
+	End   time.Time
+}
+
+// StartString returns the Start-Time of the given Slot in the Format the Fritzbox expects.
+func (zs ZeitSlot) StartString() string {
+	return zs.string(zs.Start)
+}
+
+// EndString returns the End-Time of the given Slot in the Format the Fritzbox expects.
+func (zs ZeitSlot) EndString() string {
+	return zs.string(zs.End)
+}
+
+func (zs ZeitSlot) string(t time.Time) string {
+	return fmt.Sprintf("%02d%02d", t.Hour(), t.Minute())
+}
+
+// SlotTemplate is a helper for creating Slots.
+// It consists of a Weekday, a Start and an End time.
+// To create a Slot for Monday, from 11 AM - 3 PM (11-15:00), use SlotTemplate{time.Monday, "11:00", "15:00"}
+// The Slots created this Way can then be added to the Zeitschaltung using Zeitschaltung.SlotFromTemplate or Zeitschaltung.SlotsFromTemplates
+type SlotTemplate struct {
+	Weekday time.Weekday
+	Start   string
+	End     string
+}
+
+// SlotFromTemplate creates a Slot from a SlotTemplate and adds it to the Zeitschaltung.
+func (z *Zeitschaltung) SlotFromTemplate(data SlotTemplate) (err error) {
+	return z.SlotFromStrings(data.Weekday, data.Start, data.End)
+}
+
+// SlotsFromTemplates creates Slots from multiple SlotTemplates and adds them to the Zeitschaltung.
+func (z *Zeitschaltung) SlotsFromTemplates(data []SlotTemplate) (err error) {
+	for _, d := range data {
+		err = z.SlotFromTemplate(d)
+		if err != nil {
+			return
+		}
+	}
+	return nil
+}
+
+// SlotFromStrings creates a Slot from a Weekday and two Strings (Start and End time) and adds it to the Zeitschaltung.
+func (z *Zeitschaltung) SlotFromStrings(weekday time.Weekday, start string, end string) (err error) {
+	s, err := time.Parse("15:04", start)
+	if err != nil {
+		return
+	}
+	e, err := time.Parse("15:04", end)
+	if err != nil {
+		return
+	}
+
+	zs := ZeitSlot{Start: s, End: e}
+	for i, t := range z.Tage {
+		if t.Tag == weekday {
+			z.Tage[i].Slots = append(z.Tage[i].Slots, zs)
+			return
+		}
+	}
+
+	z.Tage = append(z.Tage, Tag{Tag: weekday, Slots: []ZeitSlot{zs}})
+	return
+}
+
+// Validate checks if the Zeitschaltung is valid. It returns an error if the Zeitschaltung is invalid.
+// This Method is automatically called when PyaSetZeitschaltung is called, but it may be called in addition manually to check User-Input.
+func (z *Zeitschaltung) Validate() error {
+	for _, t := range z.Tage {
+		if t.Tag < 0 || t.Tag > 6 {
+			return fmt.Errorf("invalid weekday: %d", t.Tag)
+		}
+		for _, s := range t.Slots {
+			m := s.Start.Minute()
+			if !(m == 0 || m == 15 || m == 30 || m == 45) {
+				return fmt.Errorf("invalid minute: %d", m)
+			}
+		}
+	}
+	return nil
+}
+
+// ToValues converts the Zeitschaltung to a map[string]string, which is the Format the FritzBox expects.
+func (z *Zeitschaltung) ToValues() map[string]string {
+	var i int
+
+	timerItems := make(map[string]string)
+	for _, t := range z.Tage {
+		if t.Tag == 0 {
+			t.Tag = 7
+		}
+		// 1 = montag, 2 = dienstag, ..., 64 = sonntag
+		day := Pow(2, int(t.Tag)-1)
+
+		for _, s := range t.Slots {
+			timerItems[fmt.Sprintf("timer_item_%d", i*2)] = fmt.Sprintf("%s;%d;%d", s.StartString(), 1, day)
+			timerItems[fmt.Sprintf("timer_item_%d", i*2+1)] = fmt.Sprintf("%s;%d;%d", s.EndString(), 0, day)
+			i++
+		}
+	}
+
+	return timerItems
 }
 
 // -------------------------------------------
