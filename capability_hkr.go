@@ -7,6 +7,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -530,11 +531,15 @@ type SlotTemplate struct {
 }
 
 // SlotFromTemplate creates a Slot from a SlotTemplate and adds it to the Zeitschaltung.
+//
+//goland:noinspection GoMixedReceiverTypes
 func (z *Zeitschaltung) SlotFromTemplate(data SlotTemplate) (err error) {
 	return z.SlotFromStrings(data.Weekday, data.Start, data.End)
 }
 
 // SlotsFromTemplates creates Slots from multiple SlotTemplates and adds them to the Zeitschaltung.
+//
+//goland:noinspection GoMixedReceiverTypes
 func (z *Zeitschaltung) SlotsFromTemplates(data []SlotTemplate) (err error) {
 	for _, d := range data {
 		err = z.SlotFromTemplate(d)
@@ -546,6 +551,8 @@ func (z *Zeitschaltung) SlotsFromTemplates(data []SlotTemplate) (err error) {
 }
 
 // SlotFromStrings creates a Slot from a Weekday and two Strings (Start and End time) and adds it to the Zeitschaltung.
+//
+//goland:noinspection GoMixedReceiverTypes
 func (z *Zeitschaltung) SlotFromStrings(weekday time.Weekday, start string, end string) (err error) {
 	s, err := time.Parse("15:04", start)
 	if err != nil {
@@ -570,6 +577,8 @@ func (z *Zeitschaltung) SlotFromStrings(weekday time.Weekday, start string, end 
 
 // Validate checks if the Zeitschaltung is valid. It returns an error if the Zeitschaltung is invalid.
 // This Method is automatically called when PyaSetZeitschaltung is called, but it may be called in addition manually to check User-Input.
+//
+//goland:noinspection GoMixedReceiverTypes
 func (z *Zeitschaltung) Validate() error {
 	for _, t := range z.Tage {
 		if t.Tag < 0 || t.Tag > 6 {
@@ -586,6 +595,8 @@ func (z *Zeitschaltung) Validate() error {
 }
 
 // ToValues converts the Zeitschaltung to a map[string]string, which is the Format the FritzBox expects.
+//
+//goland:noinspection GoMixedReceiverTypes
 func (z *Zeitschaltung) ToValues() map[string]string {
 	var i int
 
@@ -605,6 +616,328 @@ func (z *Zeitschaltung) ToValues() map[string]string {
 	}
 
 	return timerItems
+}
+
+//goland:noinspection GoMixedReceiverTypes
+func (z Zeitschaltung) String() string {
+	if len(z.Tage) == 0 {
+		return "Zeitschaltung: Empty"
+	}
+
+	var s string
+	for i := 1; i < 8; i++ {
+		for _, t := range z.Tage {
+			if int(t.Tag) == i%7 {
+				s += fmt.Sprintf("%s: ", t.Tag)
+				for _, slot := range t.Slots {
+					s += fmt.Sprintf("%s - %s, ", slot.Start.Format("15:04"), slot.End.Format("15:04"))
+				}
+				s = strings.TrimSuffix(s, ", ") + "\n"
+			}
+		}
+	}
+
+	return s
+}
+
+// PyaGetZeitschaltung fetches, parsed and returns the current Zeitschaltung for the HKR.
+func (h *Hkr) PyaGetZeitschaltung(pya *PyAdapter) (z Zeitschaltung, err error) {
+	data, err := h.pyaPrepare(pya)
+	if err != nil {
+		return
+	}
+
+	// todo: testdata remove
+	//data := url.Values{
+	//	"timer_item_0": {"0000;1;1"},
+	//	"timer_item_1": {"0400;0;1"},
+	//	"timer_item_2": {"2000;1;1"},
+	//
+	//	"timer_item_3": {"0000;0;2"},
+	//	"timer_item_4": {"0200;1;2"},
+	//	"timer_item_5": {"0600;0;2"},
+	//	"timer_item_6": {"1800;1;2"},
+	//	"timer_item_7": {"2200;0;2"},
+	//
+	//	"timer_item_10": {"1600;1;4"},
+	//	"timer_item_11": {"2000;0;4"},
+	//	"timer_item_12": {"0600;1;8"},
+	//	"timer_item_13": {"1000;0;8"},
+	//	"timer_item_14": {"1400;1;8"},
+	//	"timer_item_15": {"1800;0;8"},
+	//	"timer_item_16": {"0800;1;80"},
+	//	"timer_item_17": {"1600;0;80"},
+	//	"timer_item_18": {"1000;1;32"},
+	//	"timer_item_19": {"1400;0;32"},
+	//
+	//	"timer_item_8": {"0400;1;4"},
+	//	"timer_item_9": {"0800;0;4"},
+	//}
+
+	// keep track of the days
+	days := map[time.Weekday][]ZeitSlot{}
+
+	relevantDataItems := url.Values{}
+	for k, v := range data {
+		if strings.HasPrefix(k, "timer_item_") {
+			relevantDataItems[k] = v
+		}
+	}
+
+	// sort keys of relevant data items by their number
+	keys := make([]string, 0, len(relevantDataItems))
+	for k := range relevantDataItems {
+		keys = append(keys, k)
+	}
+
+	sort.Slice(keys, func(i, j int) bool {
+		iN, _ := strconv.Atoi(strings.TrimPrefix(keys[i], "timer_item_"))
+		jN, _ := strconv.Atoi(strings.TrimPrefix(keys[j], "timer_item_"))
+		return iN < jN
+	})
+
+	for _, k := range keys {
+		v := relevantDataItems[k]
+
+		// split the timer item into its values
+		values := strings.Split(v[0], ";")
+
+		// the third value is a binary representation of the days the timer item applies to
+		var appliesTo int
+		appliesTo, err = strconv.Atoi(values[2])
+		if err != nil {
+			return
+		}
+
+		// iterate over the binary representation
+		for i, c := range Reverse(strings.ReplaceAll(fmt.Sprintf("%8s", strconv.FormatInt(int64(appliesTo), 2)), " ", "0")) {
+			if c == '1' {
+				// the first value is the time
+				var t time.Time
+				t, err = time.Parse("1504", values[0])
+				if err != nil {
+					return
+				}
+
+				wDay := i + 1
+				if wDay == 7 {
+					wDay = 0
+				}
+
+				// the second value is the type (0 = end, 1 = start)
+				day := days[time.Weekday(wDay)]
+
+				// if the value is one, search the item, where the start is not set yet
+				if values[1] == "1" {
+					found := false
+
+					// either an existing item without start
+					for ind, s := range day {
+						if s.Start.IsZero() {
+							day[ind].Start = t
+							found = true
+							break
+						}
+					}
+
+					// or, if not found, a new item
+					if !found {
+						day = append(day, ZeitSlot{Start: t})
+					}
+				} else
+				// Value is 0, so it's an end
+				{
+
+					// If the first Item of the day is an end, it's not valid
+					// This is due to a bug the fritzbox has, where, if you have XXX - 0:00 on Monday,
+					// the end will be applied to both, the end of monday (23:59) and the beginning of tuesday (0:00) aswell.
+					// todo: check if fixed in newer versions (09.09.23)
+					if len(day) == 0 {
+						continue
+					}
+
+					found := false
+					// Same as above, but it seems, that the end always comes after the start, so we only need to find the first item without an end
+					for ind, s := range day {
+						if s.End.IsZero() {
+							day[ind].End = t
+							found = true
+							break
+						}
+					}
+
+					// not sure if this is possible
+					// todo test
+					if !found {
+						panic("time slot not found. this is a bug")
+						//		day = append(day, ZeitSlot{End: t})
+					}
+				}
+
+				days[time.Weekday(wDay)] = day
+			}
+		}
+	}
+
+	z.Tage = make([]Tag, 0, len(days))
+	for k, v := range days {
+		z.Tage = append(z.Tage, Tag{Tag: k, Slots: v})
+	}
+
+	return
+}
+
+// -------------------------------------------
+//
+// PyAdapter Holidays (UNSTABLE)
+//
+// -------------------------------------------
+
+// Holidays is the Struct that is used to set Holidays for the HKR.
+// The FritzBox allows a maximum of 4 Holidays.
+type Holidays struct {
+	Holidays    [4]Holiday
+	HolidayTemp float64
+}
+
+// Holiday is a single Holiday. It consists of a Start and End time, as well as an ID.
+// For creating Holidays, use Holidays.AddHoliday.
+type Holiday struct {
+	ID         int
+	StartDay   int
+	StartMonth int
+	StartHour  int
+	EndDay     int
+	EndMonth   int
+	EndHour    int
+	Enabled    int
+}
+
+// StartToDate converts the Start-Values to a time.Time-Struct
+func (h *Holiday) StartToDate() time.Time {
+	return TimeFromDMH(h.StartDay, h.StartMonth, h.StartHour)
+}
+
+// EndToDate converts the End-Values to a time.Time-Struct
+func (h *Holiday) EndToDate() time.Time {
+	return TimeFromDMH(h.EndDay, h.EndMonth, h.EndHour)
+}
+
+// IsEmpty returns true if the given Holiday is empty
+func (h *Holiday) IsEmpty() bool {
+	return h.ID == 0
+}
+
+// IsEnabled returns true if the given Holiday is enabled
+func (h *Holiday) IsEnabled() bool {
+	return h.Enabled == 1
+}
+
+// AddHoliday adds a Holiday to the Holidays-Struct. It returns an error if the maximum amount of Holidays is reached.
+// Holidays added via this Method are enabled by default. There can be 0-4 Holidays total.
+func (h *Holidays) AddHoliday(from time.Time, to time.Time) error {
+	for i, hol := range h.Holidays {
+		if hol.ID == 0 {
+			h.Holidays[i] = Holiday{
+				ID:         i + 1,
+				StartDay:   from.Day(),
+				StartMonth: int(from.Month()),
+				StartHour:  from.Hour(),
+				EndDay:     to.Day(),
+				EndMonth:   int(to.Month()),
+				EndHour:    to.Hour(),
+				Enabled:    1,
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("reached max. amount of holidays")
+}
+
+// Validate checks if the Holidays are valid. It returns an error if the Holidays are invalid.
+// Holidays are invalid, if any Holidays overlap, or if the Start is after the End-Date of the same Holiday.
+func (h *Holidays) Validate() error {
+	for i, hol1 := range h.Holidays {
+		if hol1.IsEmpty() || !hol1.IsEnabled() {
+			continue
+		}
+
+		if hol1.StartToDate().After(hol1.EndToDate()) || hol1.StartToDate().Equal(hol1.EndToDate()) {
+			return fmt.Errorf("holiday start must be before holiday end: %s - %s", hol1.StartToDate(), hol1.EndToDate())
+		}
+
+		for j, hol2 := range h.Holidays {
+			if hol2.IsEmpty() || !hol2.IsEnabled() || i == j {
+				continue
+			}
+
+			if !hol1.IsEmpty() && !hol2.IsEmpty() &&
+				((hol1.StartToDate().Before(hol2.EndToDate()) || hol1.StartToDate().Equal(hol2.EndToDate())) &&
+					(hol1.EndToDate().After(hol2.StartToDate()) || hol1.EndToDate().Equal(hol2.StartToDate()))) {
+				return fmt.Errorf("holidays cannot overlap: %s - %s, %s - %s", hol1.StartToDate(), hol1.EndToDate(), hol2.StartToDate(), hol2.EndToDate())
+			}
+		}
+	}
+	return nil
+}
+
+// ToValues converts the Holidays to a map[string]string, which is the Format the FritzBox expects.
+func (h *Holidays) ToValues() map[string]string {
+	// if all empty, return nothing
+	allEmpty := true
+	for _, hol := range h.Holidays {
+		if !hol.IsEmpty() {
+			allEmpty = false
+		}
+	}
+	if allEmpty {
+		return nil
+	}
+
+	// if some empty, fill with previous and set enabled to 0 (this is the fritzbox behaviour)
+	for i, hol := range h.Holidays {
+		if hol.IsEmpty() {
+			h.Holidays[i] = h.Holidays[0]
+			h.Holidays[i].Enabled = 0
+			h.Holidays[i].ID = i + 1
+		}
+	}
+
+	params := make(map[string]string)
+	for _, hol := range h.Holidays {
+		params[fmt.Sprintf("Holiday%dID", hol.ID)] = strconv.Itoa(hol.ID)
+		params[fmt.Sprintf("Holiday%dStartDay", hol.ID)] = strconv.Itoa(hol.StartDay)
+		params[fmt.Sprintf("Holiday%dStartMonth", hol.ID)] = strconv.Itoa(hol.StartMonth)
+		params[fmt.Sprintf("Holiday%dStartHour", hol.ID)] = strconv.Itoa(hol.StartHour)
+		params[fmt.Sprintf("Holiday%dEndDay", hol.ID)] = strconv.Itoa(hol.EndDay)
+		params[fmt.Sprintf("Holiday%dEndMonth", hol.ID)] = strconv.Itoa(hol.EndMonth)
+		params[fmt.Sprintf("Holiday%dEndHour", hol.ID)] = strconv.Itoa(hol.EndHour)
+		params[fmt.Sprintf("Holiday%dEnabled", hol.ID)] = strconv.Itoa(hol.Enabled)
+	}
+
+	params["Holidaytemp"] = fmt.Sprintf("%.1f", math.Round(h.HolidayTemp/0.5)*0.5)
+	return params
+}
+
+// PyaSetHolidays sets the Holidays for the HKR.
+// Please see the Documentation for Holidays.
+func (h *Hkr) PyaSetHolidays(pya *PyAdapter, holidays Holidays) (err error) {
+	err = holidays.Validate()
+	if err != nil {
+		return
+	}
+
+	data, err := h.pyaPrepare(pya)
+	if err != nil {
+		return
+	}
+
+	for k, v := range holidays.ToValues() {
+		data[k] = ToUrlValue(v)
+	}
+
+	_, err = pya.Client.doRequest(http.MethodPost, "data.lua", data, true)
+	return
 }
 
 // -------------------------------------------

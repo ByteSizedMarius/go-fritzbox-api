@@ -62,8 +62,8 @@ func (t *Temperature) DECTGetCelsiusNumeric(c *Client) (float64, error) {
 	return t.GetCelsiusNumeric(), nil
 }
 
-// DECTSetOffset || WARNING: Unstable || Uses frontend API, meaning that this may not work in past/future versions of Fritz!OS.
-func (t *Temperature) DECTSetOffset(c *Client, offset float64) (err error) {
+// SetOffset || WARNING: Unstable || Uses frontend API, meaning that this may not work in past/future versions of Fritz!OS.
+func (t *Temperature) SetOffset(c *Client, offset float64) (err error) {
 	data := url.Values{
 		"sid":             {c.session.Sid},
 		"device":          {t.Device().ID},
@@ -84,7 +84,7 @@ func (t *Temperature) DECTSetOffset(c *Client, offset float64) (err error) {
 	}
 
 	if b != "{\"pid\":\"sh_dev\"}" {
-		return errors.New("potentially unsuccessfull (incompatibility)")
+		return errors.New("potentially unsuccessful (incompatibility)")
 	}
 
 	t.Offset = fmt.Sprintf("%.0f", offset*10)
