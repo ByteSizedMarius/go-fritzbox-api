@@ -1,26 +1,34 @@
-import json
-from selenium.common import TimeoutException, NoSuchElementException
-from seleniumwire import webdriver
-import sys
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.support import expected_conditions as ec
+try:
+    import json
+    from selenium.common import TimeoutException, NoSuchElementException
+    from seleniumwire import webdriver
+    import sys
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.wait import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as ec
+except (ImportError, ModuleNotFoundError) as e:
+    print("Error: " + repr(e), flush=True)
+    exit()
 
 params_exclude = ["xhr", "sid", "view", "lang"]
 
 
 def expect_args(args, n):
     if len(args) != n:
-        out("Invalid arguments")
+        out("Invalid arguments. Expected " + str(n - 1) + " arguments, got " + str(len(args) - 1) + ".")
         return False
     return True
 
 
-def main():
+def main(inp=None):
+    if inp is None:
+        inp = sys.stdin
+
     debug = False
     browser = None
+    driverargs = []
 
-    for line in sys.stdin:
+    for line in inp:
         args = line.split()
 
         match args[0].lower():
@@ -28,22 +36,29 @@ def main():
                 if not expect_args(args, 1): continue
                 debug = True
                 out("OK")
+            case "args":
+                if not expect_args(args, 2): continue
+                driverargs = args[1].split("|")
+                out("OK")
             case "login":
                 if not expect_args(args, 3): continue
-                browser = login(debug, *args[1:])
+                browser = login(debug, driverargs, *args[1:])
             case "hkr":
                 if not expect_args(args, 3): continue
                 hkr(browser, *args[1:])
             case _:
-                out("Invalid command")
+                out("Invalid command: " + args[0])
 
 
-def login(debug, url, sid):
+def login(debug, args, url, sid):
     options = webdriver.ChromeOptions()
     options.add_experimental_option("excludeSwitches", ["enable-logging"])
 
     if not debug:
         options.add_argument("--headless")
+
+    for arg in args:
+        options.add_argument(arg)
 
     browser = webdriver.Chrome(options=options)
     browser.get(f"{url}/?sid={sid}")
@@ -51,7 +66,8 @@ def login(debug, url, sid):
     try:
         browser.find_element(By.ID, "uiPassInput")
         out("Invalid sid")
-        return
+        exit(0)
+
     except NoSuchElementException:
         ...
 
@@ -139,11 +155,15 @@ def out(msg):
 if __name__ == '__main__':
     out("HELO")
 
-    inp = sys.stdin.readline()
-    if inp == "OK\n":
+    if len(sys.argv) > 1:
+        main(inp=" ".join(sys.argv[1:]).split(";"))
+        exit(0)
+
+    first_inp = sys.stdin.readline()
+    if first_inp == "OK\n":
         try:
             main()
         except Exception as e:
             out("Error: " + repr(e))
     else:
-        print("Invalid OK: " + repr(inp))
+        print("Invalid OK: " + repr(first_inp))
