@@ -2,12 +2,20 @@ package go_fritzbox_api
 
 import (
 	"bufio"
+	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
+	"path"
 	"strings"
 	"time"
 )
+
+//go:embed pyAdapter/main.py
+var adapterEmbed embed.FS
 
 // PyAdapter is a struct that controls the Python Adapter to Selenium.
 // The Python Implementation of Selenium Wire is used to fetch the Arguments that are required for specific Requests.
@@ -15,14 +23,15 @@ import (
 // Starting a Python-Adapter will result in a Chromedriver being started in the Background and a Session for the Fritz!Box being created.
 // This Session is automatically refreshed periodically, unless RefreshSession is set to false.
 // For more Information, see the Readme (todo)
-// todo: add the option to give arguments to the chromedriver options on initialize
 type PyAdapter struct {
-	Client  *Client
-	Debug   bool
-	adapter *exec.Cmd
-	running bool
-	writer  *bufio.Writer
-	reader  *bufio.Reader
+	Client *Client
+	Debug  bool
+	// DriverArgs are the arguments that are passed to the chromedriver using options.add_argument().
+	DriverArgs []string
+	adapter    *exec.Cmd
+	running    bool
+	writer     *bufio.Writer
+	reader     *bufio.Reader
 }
 
 const (
@@ -95,8 +104,19 @@ func (pya *PyAdapter) StopPyAdapter() error {
 }
 
 func (pya *PyAdapter) openAdapter() (err error) {
-	// todo abs path
-	pya.adapter = exec.Command("python", "./pyAdapter/main.py")
+	// if we cannot find the adapter locally, try to take it from embed
+	var fileContent []byte
+	fileContent, err = adapterEmbed.ReadFile("pyAdapter/main.py")
+	if err != nil {
+		return
+	}
+
+	adapter := path.Join(os.TempDir(), "pyAdapter.py")
+	if err = os.WriteFile(adapter, fileContent, 0666); err != nil {
+		return
+	}
+
+	pya.adapter = exec.Command("python", adapter)
 
 	// Get the Pipes
 	out, err := pya.adapter.StdoutPipe()
@@ -128,6 +148,22 @@ func (pya *PyAdapter) openAdapter() (err error) {
 	err = write(pya.writer, "OK")
 	if err != nil {
 		return
+	}
+
+	// Handle Chromedriver Arguments
+	var input string
+	if pya.DriverArgs != nil && len(pya.DriverArgs) > 0 {
+		input = strings.Join(pya.DriverArgs, "|")
+		err = write(pya.writer, fmt.Sprintf("ARGS %s", input))
+		if err != nil {
+			return
+		}
+
+		err = expect(pya.reader, "OK")
+		if err != nil {
+			return
+		}
+
 	}
 
 	return nil
@@ -178,11 +214,11 @@ func expect(reader *bufio.Reader, expected string) (err error) {
 }
 
 func expectWithTimeout(reader *bufio.Reader, expected string, timeout time.Duration) (err error) {
-	_, err = expectHelper(reader, expected, timeout)
+	_, err = expectHelper(reader, expected, timeout, false)
 	return
 }
 
-func expectHelper(reader *bufio.Reader, expected string, timeout time.Duration) (out string, err error) {
+func expectHelper(reader *bufio.Reader, expected string, timeout time.Duration, keepReading bool) (out string, err error) {
 	output, err := readWithTimeout(reader, timeout)
 	if err != nil {
 		err = fmt.Errorf("%w %w", err, fmt.Errorf("expected %s", expected))
@@ -216,7 +252,10 @@ func read(reader *bufio.Reader) (string, error) {
 func readWithTimeout(reader *bufio.Reader, timeout time.Duration) (string, error) {
 	c1 := make(chan string, 1)
 	go func() {
-		output, _ := reader.ReadString('\n')
+		output, err := reader.ReadString('\n')
+		if errors.Is(err, io.EOF) {
+			c1 <- ""
+		}
 		c1 <- strings.Trim(output, "\r\n")
 	}()
 

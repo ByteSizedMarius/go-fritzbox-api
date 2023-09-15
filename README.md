@@ -54,6 +54,37 @@ I will eventually come around to writing a proper documentation. For now, you ca
 check the
 [godoc](https://pkg.go.dev/github.com/ByteSizedMarius/go-fritzbox-api).
 
+### Setting Up the PyAdapter
+
+```
+pip install selenium-wire
+```
+
+Try running the script using commandline-args:
+
+```
+python pyAdapter/main.py OK;DEBUG;LOGIN http://192.168.178.1/ <current SID>
+```
+
+You can get an SID by logging into the Fritzbox in your brower and right-click + copying the link from (for example) one
+of the buttons in the top right (MyFritz, Fritz!Nas). The SID is contained in the link.
+
+Remove the Debug if executing in headless (for example when connected via ssh):
+
+```
+python pyAdapter/main.py OK;LOGIN http://192.168.178.1/ <current SID>
+```
+
+Arguments can be given to the ChromeDriver like so:
+
+```
+python pyAdapter/main.py OK;DEBUG;ARGS --no-sandbox|--disable-gpu|disable-dev-shm-usage;LOGIN http://192.168.178.1/ <current SID>
+```
+
+If there are crashes, `no-sandbox`, `disable-gpu` and/or `disable-dev-shm-usage` are usually good arguments to try.
+
+If that works and logs into the FritzBox, it should be okay to start the PyAdapter from the Go-Program.
+
 ## Implementation
 
 This Library is a Project I maintain and develop based on my personal needs. It's public because there aren't many
@@ -93,7 +124,8 @@ There are two (three) types of API-Endpoints used in this libary:
   generally, it's not much slower than some of the Endpoints of the official Smarthome-API. To improve the Time it takes
   to retrieve the Parameters, the PyAdapter is started concurrently to the Go-Program, meaning the Chromedriver is
   already started and logged in to the Fritzbox, which takes about 7 seconds. This means a "cold" start, where the
-  PyAdapter first has to start and log in before sending the request can take up to 10 seconds. Currently the PYA expects the Webdriver in the PyAdapter directory or in the Path.
+  PyAdapter first has to start and log in before sending the request can take up to 10 seconds. Currently the PYA
+  expects the Webdriver in the PyAdapter directory or in the Path.
 
 ## Roadmap
 
