@@ -2,7 +2,6 @@ package go_fritzbox_api
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/clbanning/mxj/v2"
 	"net/http"
@@ -62,32 +61,19 @@ func (t *Temperature) DECTGetCelsiusNumeric(c *Client) (float64, error) {
 	return t.GetCelsiusNumeric(), nil
 }
 
-// SetOffset || WARNING: Unstable || Uses frontend API, meaning that this may not work in past/future versions of Fritz!OS.
-func (t *Temperature) SetOffset(c *Client, offset float64) (err error) {
-	data := url.Values{
-		"sid":             {c.session.Sid},
-		"device":          {t.Device().ID},
-		"ule_device_name": {t.Device().Name},
-		"Offset":          {fmt.Sprintf("%.1f", offset)},
-		"oldpage":         {"/net/home_auto_hkr_edit.lua"}, // actually required (?)
-		"apply":           {""},
+// PyaSetOffset sets the temperature offset for the device using the PyAdapter
+func (t *Temperature) PyaSetOffset(pya *PyAdapter, offset float64) (err error) {
+	// Setting the Offset is done via the HKR, despite the Offset being part of the Temperature capability.
+	// Get the HKR via the Device
+	if !t.device.HasCapability(CHKR) {
+		return fmt.Errorf("device does not have capability %s", CHKR)
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "data.lua", data, true)
-	if err != nil {
-		return
-	}
+	hkr := GetCapability[*Hkr](*t.Device())
+	data, err := hkr.pyaPrepare(pya)
+	data["Offset"] = ToUrlValue(offset)
 
-	b, err := getBody(resp)
-	if err != nil {
-		return
-	}
-
-	if b != "{\"pid\":\"sh_dev\"}" {
-		return errors.New("potentially unsuccessful (incompatibility)")
-	}
-
-	t.Offset = fmt.Sprintf("%.0f", offset*10)
+	_, err = pya.Client.doRequest(http.MethodPost, "data.lua", data, true)
 	return
 }
 
