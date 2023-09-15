@@ -85,7 +85,7 @@ def hkr(browser, url, dev_id):
 
     # click any edit button, intercept the request and redirect it to the correct device
     def intercept_hkr(request):
-        if request.method == 'POST' and "page" in request.params and request.params["page"] == "home_auto_hkr_edit":
+        if request.method == "POST" and "page" in request.params and request.params["page"] == "home_auto_hkr_edit":
 
             # request to go to edit page
             if "back_to_page" not in request.params:
@@ -98,10 +98,13 @@ def hkr(browser, url, dev_id):
                 out("SUCCESS " + json.dumps({k: v for k, v in request.params.items() if k not in params_exclude}))
 
     browser.request_interceptor = intercept_hkr
-    edit_btn = smarthome_table.find_element(By.CLASS_NAME, "v-icon--edit")
-    if not edit_btn:
-        out("Could not find edit button")
+
+    edit_btn_find = (By.CLASS_NAME, "v-icon--edit")
+    if not expect(browser, edit_btn_find):
+        out("Could not find table edit button")
         return
+
+    edit_btn = smarthome_table.find_element(*edit_btn_find)
     edit_btn.find_element(By.XPATH, "../..").click()
 
     # wait for the edit page

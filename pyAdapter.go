@@ -70,6 +70,10 @@ func (pya *PyAdapter) GetArgsHKR(device Hkr) (params map[string]string, err erro
 	}
 
 	result, err := readSuccess(pya.reader, time.Second*10)
+	if err != nil {
+		return
+	}
+
 	params = make(map[string]string)
 	err = json.Unmarshal([]byte(result), &params)
 	return
@@ -91,6 +95,7 @@ func (pya *PyAdapter) StopPyAdapter() error {
 }
 
 func (pya *PyAdapter) openAdapter() (err error) {
+	// todo abs path
 	pya.adapter = exec.Command("python", "./pyAdapter/main.py")
 
 	// Get the Pipes
