@@ -74,6 +74,15 @@ func (t *Temperature) PyaSetOffset(pya *PyAdapter, offset float64) (err error) {
 	data["Offset"] = ToUrlValue(offset)
 
 	_, err = pya.Client.doRequest(http.MethodPost, "data.lua", data, true)
+	if err != nil {
+		return
+	}
+
+	err = t.Reload(pya.Client)
+	if t.GetOffsetNumeric() != offset {
+		err = fmt.Errorf("could not set offset. If offset is set multiple time in a short period of time, the fritzbox will block the requests.")
+	}
+
 	return
 }
 
