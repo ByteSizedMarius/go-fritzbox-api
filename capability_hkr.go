@@ -13,6 +13,11 @@ import (
 	"time"
 )
 
+// Note:
+// noinspection GoMixedReceiverTypes is required, because I use pointer receivers for classes,
+// but the String() Method only works for non-pointer receivers.
+// Maybe I'm missing something here? How is this supposed to work?
+
 // Hkr is the struct for HeizungsKörperRegler. Note: current temperature can be accessed via the temperature-capability.
 type Hkr struct {
 	CapName                 string
@@ -32,18 +37,23 @@ type Hkr struct {
 		Endperiod string `json:"endperiod"`
 		Tchange   string `json:"tchange"`
 	} `json:"nextchange"`
-	Summeractive    string     `json:"summeractive"`  // 1 if summer is currently active
-	SummerTimeSet   bool       `json:"-"`             // true if summer-time is set, call FetchSummerTime on Device to fill it. If false, SummerTimeFrame does not return real values.
-	SummerTimeFrame SummerTime `json:"-"`             // value is empty by default, call FetchSummerTime on Device to fill it
-	Holidayactive   string     `json:"holidayactive"` // same as summer
-	device          *SmarthomeDevice
+	Summeractive  string `json:"summeractive"`  // 1 if summer is currently active
+	Holidayactive string `json:"holidayactive"` // same as summer
+
+	// HkrUnstableInformation contains Information, that is not usually accessible via the API.
+	// Empty by default. Call PyaFetchInformation on the Hkr to fill it using the PyAdapter.
+	// SummerTime can be also fetched using FetchSummerTime (without PYA) or PyaFetchSummertime (with PYA)
+	HkrUnstableInformation HkrPyaInformation `json:"-"`
+	device                 *SmarthomeDevice
 }
 
-type SummerTime struct {
-	StartDay   string
-	StartMonth string
-	EndDay     string
-	EndMonth   string
+// HkrPyaInformation contains Information, that is not usually accessible via the API.
+// Empty by default. Call PyaFetchInformation on the Hkr to fill it using the PyAdapter.
+type HkrPyaInformation struct {
+	SummerTimeSet   bool
+	SummerTimeFrame SummerTime
+	Zeitschaltung   Zeitschaltung
+	Holidays        Holidays
 }
 
 // errorcodes taken from docs, 29.09.22
@@ -329,9 +339,86 @@ func (h *Hkr) GetNextchangeEndtime() (t time.Time) {
 
 // -------------------------------------------
 //
-// Unstable
+// PYA
 //
 // -------------------------------------------
+
+// PyaFetchInformation fetches the SummerTimeFrame, the Zeitschaltung and the Holiday-Fields for HkrUnstableInformation.
+// It does not return anything, but instead fills the HkrUnstableInformation-Field of the Hkr.
+// There is only one Method to fill all three fields at once, as they are all fetched using the same initial request,
+// thus making fetching all three of them separately much slower than just fetching them together.
+// This Method is preferred over FetchSummerTime, as it does not require parsing the HTML-Response, thus (hopefully) making it more stable.
+func (h *Hkr) PyaFetchInformation(pya *PyAdapter) (err error) {
+	data, err := h.pyaPrepare(pya)
+	if err != nil {
+		return
+	}
+
+	// todo how to determine
+	// h.HkrUnstableInformation.SummerTimeSet = true?
+
+	h.HkrUnstableInformation.SummerTimeFrame = SummerTime{
+		StartDay:   data["SummerStartDay"][0],
+		StartMonth: data["SummerStartMonth"][0],
+		EndDay:     data["SummerEndDay"][0],
+		EndMonth:   data["SummerEndMonth"][0],
+	}
+
+	h.HkrUnstableInformation.Zeitschaltung, err = parseZeitschaltungFromData(data)
+	if err != nil {
+		return
+	}
+
+	h.HkrUnstableInformation.Holidays, err = parseHolidaysFromData(data)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+func (h *Hkr) pyaPrepare(pya *PyAdapter) (data url.Values, err error) {
+	params, err := pya.GetArgsHKR(*h)
+	if err != nil {
+		return
+	}
+
+	data = url.Values{
+		"sid": {pya.Client.SID()},
+	}
+
+	for k, v := range params {
+		data[k] = []string{v}
+	}
+
+	return data, nil
+}
+
+// -------------------------------------------
+//
+// Summer-Time
+//
+// -------------------------------------------
+
+// SummerTime is the field that holds Information about the Start- and End-Date of the SummerTime-Frame set for the HKR.
+// The struct only holds the raw Information as Strings. To get the actual Dates, use GetStartDate and GetEndDate.
+// To fetch the Data, use FetchSummerTime (without PYA) or PyaFetchSummertime (with PYA).
+type SummerTime struct {
+	StartDay   string
+	StartMonth string
+	EndDay     string
+	EndMonth   string
+}
+
+// GetStartDate returns a formatted time.Time-Struct for the Start of the SummerTime-Frame
+func (stf SummerTime) GetStartDate() time.Time {
+	return dateHelper(stf.StartMonth, stf.StartDay)
+}
+
+// GetEndDate returns a formatted time.Time-Struct for the End of the SummerTime-Frame
+func (stf SummerTime) GetEndDate() time.Time {
+	return dateHelper(stf.EndMonth, stf.EndDay)
+}
 
 // FetchSummerTime fetches the SummerTime-Frame for the HKR. It does not return anything, but instead fills the SummerTimeFrame-Field for the Hkr.
 // If Pya is already initialized and logged in, using the Function PyaFetchSummertime is generally preferable.
@@ -355,10 +442,10 @@ func (h *Hkr) FetchSummerTime(c *Client) (err error) {
 	doc := soup.HTMLParse(body)
 	row := doc.Find("tr", "id", "uiSummerEnabledRow")
 	if row.Error != nil || row.Attrs()["style"] == "display:none;" {
-		h.SummerTimeSet = false
+		h.HkrUnstableInformation.SummerTimeSet = false
 		return
 	}
-	h.SummerTimeSet = true
+	h.HkrUnstableInformation.SummerTimeSet = true
 
 	ssd := row.Find("input", "id", "uiSummerStartDay")
 	ssm := row.Find("input", "id", "uiSummerStartMonth")
@@ -370,7 +457,7 @@ func (h *Hkr) FetchSummerTime(c *Client) (err error) {
 		return fmt.Errorf("%s", "Some required Inputs not found")
 	}
 
-	h.SummerTimeFrame = SummerTime{
+	h.HkrUnstableInformation.SummerTimeFrame = SummerTime{
 		StartDay:   ssd.Attrs()["value"],
 		StartMonth: ssm.Attrs()["value"],
 		EndDay:     sed.Attrs()["value"],
@@ -379,30 +466,6 @@ func (h *Hkr) FetchSummerTime(c *Client) (err error) {
 
 	return nil
 }
-
-func dateHelper(month string, day string) time.Time {
-	monthNr, _ := strconv.Atoi(month)
-	dayNr, _ := strconv.Atoi(day)
-
-	now := time.Now()
-	return time.Date(now.Year(), time.Month(monthNr), dayNr, 0, 0, 0, 0, time.UTC)
-}
-
-// GetStartDate returns a formatted time.Time-Struct for the Start of the SummerTime-Frame
-func (stf SummerTime) GetStartDate() time.Time {
-	return dateHelper(stf.StartMonth, stf.StartDay)
-}
-
-// GetEndDate returns a formatted time.Time-Struct for the End of the SummerTime-Frame
-func (stf SummerTime) GetEndDate() time.Time {
-	return dateHelper(stf.EndMonth, stf.EndDay)
-}
-
-// -------------------------------------------
-//
-// Py Adapter Functions
-//
-// -------------------------------------------
 
 // PyaSetSummerTime sets the SummerTime for the HKR.
 // Only Day/Month of the Time-Values is required. The Helper-Method TimeFromDM can be used to create the Time-Values.
@@ -420,6 +483,24 @@ func (h *Hkr) PyaSetSummerTime(pya *PyAdapter, start time.Time, end time.Time) (
 	_, err = pya.Client.doRequest(http.MethodPost, "data.lua", data, true)
 	return
 }
+
+func dateHelper(month string, day string) time.Time {
+	monthNr, _ := strconv.Atoi(month)
+	dayNr, _ := strconv.Atoi(day)
+
+	now := time.Now()
+	return time.Date(now.Year(), time.Month(monthNr), dayNr, 0, 0, 0, 0, time.UTC)
+}
+
+// -------------------------------------------
+//
+// PyAdapter Zeitschaltung
+//
+// -------------------------------------------
+
+// todo: Slots can be simplified. The third value in the timer_item-string is used to determine, to which days the timer_item applies
+// if a similar start/end time is applied to multiple different days, this value can be set to the sum of the respective days
+// it doesnt seem to matter from what I can tell, it's just a bit shorter. Probably not worth the effort.
 
 // PyaSetZeitschaltung sets the Zeitschaltung for the HKR.
 // Please see the Documentation for Zeitschaltung.
@@ -442,51 +523,6 @@ func (h *Hkr) PyaSetZeitschaltung(pya *PyAdapter, z Zeitschaltung) (err error) {
 	_, err = pya.Client.doRequest(http.MethodPost, "data.lua", data, true)
 	return
 }
-
-// PyaFetchSummertime fetches the SummerTimeFrame. It does not return anything, but instead fills the SummerTimeFrame-Field for the Hkr.
-// This Method is preferred over FetchSummerTime, as it does not require parsing the HTML-Response, thus, hopefully
-// making it more stable.
-func (h *Hkr) PyaFetchSummertime(pya *PyAdapter) (err error) {
-	data, err := h.pyaPrepare(pya)
-	if err != nil {
-		return
-	}
-
-	h.SummerTimeFrame = SummerTime{
-		StartDay:   data["SummerStartDay"][0],
-		StartMonth: data["SummerStartMonth"][0],
-		EndDay:     data["SummerEndDay"][0],
-		EndMonth:   data["SummerEndMonth"][0],
-	}
-	return
-}
-
-func (h *Hkr) pyaPrepare(pya *PyAdapter) (data url.Values, err error) {
-	params, err := pya.GetArgsHKR(*h)
-	if err != nil {
-		return
-	}
-
-	data = url.Values{
-		"sid": {pya.Client.SID()},
-	}
-
-	for k, v := range params {
-		data[k] = []string{v}
-	}
-
-	return data, nil
-}
-
-// -------------------------------------------
-//
-// PyAdapter Zeitschaltung (UNSTABLE)
-//
-// -------------------------------------------
-
-// todo: Slots can be simplified. The third value in the timer_item-string is used to determine, to which days the timer_item applies
-// if a similar start/end time is applied to multiple different days, this value can be set to the sum of the respective days
-// it doesnt seem to matter from what I can tell, it's just shorter
 
 // Zeitschaltung is a struct that holds the Values for the HKR-Timer in the Format that is expected by the Fritzbox.
 // It consists of all days of the week, which in turn consist of ZeitSlots.
@@ -640,40 +676,36 @@ func (z Zeitschaltung) String() string {
 	return s
 }
 
-// PyaGetZeitschaltung fetches, parsed and returns the current Zeitschaltung for the HKR.
-func (h *Hkr) PyaGetZeitschaltung(pya *PyAdapter) (z Zeitschaltung, err error) {
-	data, err := h.pyaPrepare(pya)
-	if err != nil {
-		return
-	}
+// todo: testdata remove at some point
+//data := url.Values{
+//	"timer_item_0": {"0000;1;1"},
+//	"timer_item_1": {"0400;0;1"},
+//	"timer_item_2": {"2000;1;1"},
+//
+//	"timer_item_3": {"0000;0;2"},
+//	"timer_item_4": {"0200;1;2"},
+//	"timer_item_5": {"0600;0;2"},
+//	"timer_item_6": {"1800;1;2"},
+//	"timer_item_7": {"2200;0;2"},
+//
+//	"timer_item_10": {"1600;1;4"},
+//	"timer_item_11": {"2000;0;4"},
+//	"timer_item_12": {"0600;1;8"},
+//	"timer_item_13": {"1000;0;8"},
+//	"timer_item_14": {"1400;1;8"},
+//	"timer_item_15": {"1800;0;8"},
+//	"timer_item_16": {"0800;1;80"},
+//	"timer_item_17": {"1600;0;80"},
+//	"timer_item_18": {"1000;1;32"},
+//	"timer_item_19": {"1400;0;32"},
+//
+//	"timer_item_8": {"0400;1;4"},
+//	"timer_item_9": {"0800;0;4"},
+//}
 
-	// todo: testdata remove
-	//data := url.Values{
-	//	"timer_item_0": {"0000;1;1"},
-	//	"timer_item_1": {"0400;0;1"},
-	//	"timer_item_2": {"2000;1;1"},
-	//
-	//	"timer_item_3": {"0000;0;2"},
-	//	"timer_item_4": {"0200;1;2"},
-	//	"timer_item_5": {"0600;0;2"},
-	//	"timer_item_6": {"1800;1;2"},
-	//	"timer_item_7": {"2200;0;2"},
-	//
-	//	"timer_item_10": {"1600;1;4"},
-	//	"timer_item_11": {"2000;0;4"},
-	//	"timer_item_12": {"0600;1;8"},
-	//	"timer_item_13": {"1000;0;8"},
-	//	"timer_item_14": {"1400;1;8"},
-	//	"timer_item_15": {"1800;0;8"},
-	//	"timer_item_16": {"0800;1;80"},
-	//	"timer_item_17": {"1600;0;80"},
-	//	"timer_item_18": {"1000;1;32"},
-	//	"timer_item_19": {"1400;0;32"},
-	//
-	//	"timer_item_8": {"0400;1;4"},
-	//	"timer_item_9": {"0800;0;4"},
-	//}
-
+// Contains algorithm to parse the Zeitschaltung for the HKR from the Post-Parameters given, when a HKR-Device is edited.
+// Algorithm can surely be improved, also there is a small Bug when Timeframes last until Midnight.
+func parseZeitschaltungFromData(data url.Values) (z Zeitschaltung, err error) {
 	// keep track of the days
 	days := map[time.Weekday][]ZeitSlot{}
 
@@ -789,7 +821,7 @@ func (h *Hkr) PyaGetZeitschaltung(pya *PyAdapter) (z Zeitschaltung, err error) {
 
 // -------------------------------------------
 //
-// PyAdapter Holidays (UNSTABLE)
+// PYA Holidays
 //
 // -------------------------------------------
 
@@ -814,27 +846,58 @@ type Holiday struct {
 }
 
 // StartToDate converts the Start-Values to a time.Time-Struct
+//
+//goland:noinspection GoMixedReceiverTypes
 func (h *Holiday) StartToDate() time.Time {
 	return TimeFromDMH(h.StartDay, h.StartMonth, h.StartHour)
 }
 
 // EndToDate converts the End-Values to a time.Time-Struct
+//
+//goland:noinspection GoMixedReceiverTypes
 func (h *Holiday) EndToDate() time.Time {
 	return TimeFromDMH(h.EndDay, h.EndMonth, h.EndHour)
 }
 
 // IsEmpty returns true if the given Holiday is empty
+//
+//goland:noinspection GoMixedReceiverTypes
 func (h *Holiday) IsEmpty() bool {
 	return h.ID == 0
 }
 
 // IsEnabled returns true if the given Holiday is enabled
+//
+//goland:noinspection GoMixedReceiverTypes
 func (h *Holiday) IsEnabled() bool {
 	return h.Enabled == 1
 }
 
+//goland:noinspection GoMixedReceiverTypes
+func (h Holiday) String() string {
+	if !h.IsEnabled() {
+		return fmt.Sprintf("Holiday %d: Not Set\n", h.ID)
+	}
+
+	return fmt.Sprintf("Holiday %d: %s - %s\n", h.ID, h.StartToDate().Format("02.01, 15:04"), h.EndToDate().Format("02.01, 15:04"))
+}
+
+//goland:noinspection GoMixedReceiverTypes
+func (h *Holiday) fromData(data url.Values, id int) {
+	h.ID, _ = strconv.Atoi(data[fmt.Sprintf("Holiday%dID", id)][0])
+	h.StartDay, _ = strconv.Atoi(data[fmt.Sprintf("Holiday%dStartDay", id)][0])
+	h.StartMonth, _ = strconv.Atoi(data[fmt.Sprintf("Holiday%dStartMonth", id)][0])
+	h.StartHour, _ = strconv.Atoi(data[fmt.Sprintf("Holiday%dStartHour", id)][0])
+	h.EndDay, _ = strconv.Atoi(data[fmt.Sprintf("Holiday%dEndDay", id)][0])
+	h.EndMonth, _ = strconv.Atoi(data[fmt.Sprintf("Holiday%dEndMonth", id)][0])
+	h.EndHour, _ = strconv.Atoi(data[fmt.Sprintf("Holiday%dEndHour", id)][0])
+	h.Enabled, _ = strconv.Atoi(data[fmt.Sprintf("Holiday%dEnabled", id)][0])
+}
+
 // AddHoliday adds a Holiday to the Holidays-Struct. It returns an error if the maximum amount of Holidays is reached.
 // Holidays added via this Method are enabled by default. There can be 0-4 Holidays total.
+//
+//goland:noinspection GoMixedReceiverTypes
 func (h *Holidays) AddHoliday(from time.Time, to time.Time) error {
 	for i, hol := range h.Holidays {
 		if hol.ID == 0 {
@@ -856,6 +919,8 @@ func (h *Holidays) AddHoliday(from time.Time, to time.Time) error {
 
 // Validate checks if the Holidays are valid. It returns an error if the Holidays are invalid.
 // Holidays are invalid, if any Holidays overlap, or if the Start is after the End-Date of the same Holiday.
+//
+//goland:noinspection GoMixedReceiverTypes
 func (h *Holidays) Validate() error {
 	for i, hol1 := range h.Holidays {
 		if hol1.IsEmpty() || !hol1.IsEnabled() {
@@ -882,6 +947,8 @@ func (h *Holidays) Validate() error {
 }
 
 // ToValues converts the Holidays to a map[string]string, which is the Format the FritzBox expects.
+//
+//goland:noinspection GoMixedReceiverTypes
 func (h *Holidays) ToValues() map[string]string {
 	// if all empty, return nothing
 	allEmpty := true
@@ -919,6 +986,17 @@ func (h *Holidays) ToValues() map[string]string {
 	return params
 }
 
+//goland:noinspection GoMixedReceiverTypes
+func (h Holidays) String() string {
+	rt := fmt.Sprintf("Holiday-Temperature: %.1f\n", h.HolidayTemp)
+
+	for _, hol := range h.Holidays {
+		rt += hol.String()
+	}
+
+	return rt
+}
+
 // PyaSetHolidays sets the Holidays for the HKR.
 // Please see the Documentation for Holidays.
 func (h *Hkr) PyaSetHolidays(pya *PyAdapter, holidays Holidays) (err error) {
@@ -937,6 +1015,21 @@ func (h *Hkr) PyaSetHolidays(pya *PyAdapter, holidays Holidays) (err error) {
 	}
 
 	_, err = pya.Client.doRequest(http.MethodPost, "data.lua", data, true)
+	return
+}
+
+func parseHolidaysFromData(data url.Values) (h Holidays, err error) {
+	hTemp, ok := data["Holidaytemp"]
+
+	// Field is only present if there is at least 1 holiday set
+	if ok {
+		h.HolidayTemp, _ = strconv.ParseFloat(hTemp[0], 64)
+	}
+
+	for i := 1; i <= 4; i++ {
+		h.Holidays[i-1].fromData(data, i)
+	}
+
 	return
 }
 
