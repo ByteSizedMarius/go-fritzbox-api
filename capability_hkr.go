@@ -798,11 +798,8 @@ func parseZeitschaltungFromData(data url.Values) (z Zeitschaltung, err error) {
 						}
 					}
 
-					// not sure if this is possible
-					// todo test
 					if !found {
-						panic("time slot not found. this is a bug")
-						//		day = append(day, ZeitSlot{End: t})
+						day = append(day, ZeitSlot{End: t})
 					}
 				}
 

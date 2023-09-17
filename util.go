@@ -15,11 +15,11 @@ func Reverse(s string) (result string) {
 }
 
 func TimeFromDM(day int, month int) time.Time {
-	return time.Date(0, time.Month(month), day, 0, 0, 0, 0, time.UTC)
+	return time.Date(1, time.Month(month), day, 0, 0, 0, 0, time.UTC)
 }
 
 func TimeFromDMH(day int, month int, hour int) time.Time {
-	return time.Date(0, time.Month(month), day, hour, 0, 0, 0, time.UTC)
+	return time.Date(1, time.Month(month), day, hour, 0, 0, 0, time.UTC)
 }
 
 func ToUrlValue(value interface{}) []string {
