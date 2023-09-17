@@ -466,7 +466,7 @@ func (h *Hkr) FetchSummerTime(c *Client) (err error) {
 }
 
 // PyaSetSummerTime sets the SummerTime for the HKR.
-// Only Day/Month of the Time-Values is required. The Helper-Method TimeFromDM can be used to create the Time-Values.
+// Only Day/Month of the Time-Values is required. The Helper-Method TimeFromMD can be used to create the Time-Values.
 func (h *Hkr) PyaSetSummerTime(pya *PyAdapter, start time.Time, end time.Time) (err error) {
 	data, err := h.pyaPrepare(pya)
 	if err != nil {
@@ -857,14 +857,14 @@ type Holiday struct {
 //
 //goland:noinspection GoMixedReceiverTypes
 func (h *Holiday) GetStartDate() time.Time {
-	return TimeFromDMH(h.StartDay, h.StartMonth, h.StartHour)
+	return DateFromMDH(h.StartMonth, h.StartDay, h.StartHour)
 }
 
 // GetEndDate converts the End-Values to a time.Time-Struct
 //
 //goland:noinspection GoMixedReceiverTypes
 func (h *Holiday) GetEndDate() time.Time {
-	return TimeFromDMH(h.EndDay, h.EndMonth, h.EndHour)
+	return DateFromMDH(h.EndMonth, h.EndDay, h.EndHour)
 }
 
 // IsEmpty returns true if the given Holiday is empty
@@ -1026,7 +1026,7 @@ func (h *Hkr) PyaSetHolidays(pya *PyAdapter, holidays Holidays) (err error) {
 	return
 }
 
-// PyaDisableHoliday disables the given Holiday for the PYA.
+// PyaDisableHoliday disables the given Holiday using the PYA.
 func (h *Hkr) PyaDisableHoliday(pya *PyAdapter, hol Holiday) (err error) {
 	data, err := h.pyaPrepare(pya)
 	if err != nil {
@@ -1042,6 +1042,36 @@ func (h *Hkr) PyaDisableHoliday(pya *PyAdapter, hol Holiday) (err error) {
 	data[holStr] = ToUrlValue(0)
 	_, err = pya.Client.doRequest(http.MethodPost, "data.lua", data, true)
 	return
+}
+
+// PyaDisableCurrentHoliday disables the currently active Holiday using the PYA.
+// If no Holiday is currently active, an error is returned.
+func (h *Hkr) PyaDisableCurrentHoliday(pya *PyAdapter) (err error) {
+	data, err := h.pyaPrepare(pya)
+	if err != nil {
+		return
+	}
+
+	holidays, err := parseHolidaysFromData(data)
+	if err != nil {
+		return
+	}
+
+	for _, hol := range holidays.Holidays {
+		now := time.Now()
+		end := DateFromYMDH(now.Year(), hol.EndMonth, hol.EndDay, hol.EndHour)
+		start := DateFromYMDH(now.Year(), hol.StartMonth, hol.StartDay, hol.StartHour)
+
+		if hol.IsEnabled() && start.Before(time.Now()) && end.After(time.Now()) {
+			data[fmt.Sprintf("Holiday%dEnabled", hol.ID)] = ToUrlValue(0)
+			_, err = pya.Client.doRequest(http.MethodPost, "data.lua", data, true)
+
+			// there can only be exactly one active holiday, so we can stop here
+			return
+		}
+	}
+
+	return fmt.Errorf("no holiday is currently enabled")
 }
 
 func parseHolidaysFromData(data url.Values) (h Holidays, err error) {
