@@ -22,11 +22,22 @@ func (c *Client) GetSmarthomeDevicesFilter(requiredCapabilities []string) (dl *S
 	if err != nil {
 		return
 	}
+	dl.filter = requiredCapabilities
+	dl.doFilter()
+	return dl, nil
+}
+
+func (dl *SHDevicelist) doFilter() {
+	if len(dl.filter) == 0 {
+		return
+	}
 
 	var tmp []SmarthomeDevice
-	valid := true
+	var valid bool
 	for _, e := range dl.Devices {
-		for _, capab := range requiredCapabilities {
+		valid = true
+
+		for _, capab := range dl.filter {
 			if !e.HasCapability(capab) {
 				valid = false
 			}
@@ -34,13 +45,13 @@ func (c *Client) GetSmarthomeDevicesFilter(requiredCapabilities []string) (dl *S
 
 		if valid {
 			tmp = append(tmp, e)
+		} else {
+			valid = true
+			continue
 		}
-
-		valid = true
 	}
 
 	dl.Devices = tmp
-	return dl, nil
 }
 
 func (c *Client) GetDeviceInfos(devIdentifier string, dest interface{}) (err error) {

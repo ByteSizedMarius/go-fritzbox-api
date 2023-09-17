@@ -16,6 +16,7 @@ type SHDevicelist struct {
 	Version   string
 	Fwversion string
 	Devices   []SmarthomeDevice
+	filter    []string
 }
 
 func (dl *SHDevicelist) Reload(c *Client) error {
@@ -33,6 +34,8 @@ func (dl *SHDevicelist) Reload(c *Client) error {
 	dl.Devices = tdl.Devices
 	dl.Version = tdl.Version
 	dl.Fwversion = tdl.Fwversion
+	dl.doFilter()
+
 	return nil
 }
 
