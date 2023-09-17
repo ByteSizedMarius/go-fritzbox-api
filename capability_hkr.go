@@ -50,10 +50,9 @@ type Hkr struct {
 // HkrPyaInformation contains Information, that is not usually accessible via the API.
 // Empty by default. Call PyaFetchInformation on the Hkr to fill it using the PyAdapter.
 type HkrPyaInformation struct {
-	SummerTimeSet   bool
-	SummerTimeFrame SummerTime
-	Zeitschaltung   Zeitschaltung
-	Holidays        Holidays
+	SummerTime    SummerTime
+	Zeitschaltung Zeitschaltung
+	Holidays      Holidays
 }
 
 // errorcodes taken from docs, 29.09.22
@@ -354,14 +353,12 @@ func (h *Hkr) PyaFetchInformation(pya *PyAdapter) (err error) {
 		return
 	}
 
-	// todo how to determine
-	// h.HkrUnstableInformation.SummerTimeSet = true?
-
-	h.HkrUnstableInformation.SummerTimeFrame = SummerTime{
+	h.HkrUnstableInformation.SummerTime = SummerTime{
 		StartDay:   data["SummerStartDay"][0],
 		StartMonth: data["SummerStartMonth"][0],
 		EndDay:     data["SummerEndDay"][0],
 		EndMonth:   data["SummerEndMonth"][0],
+		IsEnabled:  data["SummerEnabled"][0] == "1",
 	}
 
 	h.HkrUnstableInformation.Zeitschaltung, err = parseZeitschaltungFromData(data)
@@ -404,6 +401,7 @@ func (h *Hkr) pyaPrepare(pya *PyAdapter) (data url.Values, err error) {
 // The struct only holds the raw Information as Strings. To get the actual Dates, use GetStartDate and GetEndDate.
 // To fetch the Data, use FetchSummerTime (without PYA) or PyaFetchSummertime (with PYA).
 type SummerTime struct {
+	IsEnabled  bool
 	StartDay   string
 	StartMonth string
 	EndDay     string
@@ -442,10 +440,9 @@ func (h *Hkr) FetchSummerTime(c *Client) (err error) {
 	doc := soup.HTMLParse(body)
 	row := doc.Find("tr", "id", "uiSummerEnabledRow")
 	if row.Error != nil || row.Attrs()["style"] == "display:none;" {
-		h.HkrUnstableInformation.SummerTimeSet = false
+		h.HkrUnstableInformation.SummerTime = SummerTime{IsEnabled: false}
 		return
 	}
-	h.HkrUnstableInformation.SummerTimeSet = true
 
 	ssd := row.Find("input", "id", "uiSummerStartDay")
 	ssm := row.Find("input", "id", "uiSummerStartMonth")
@@ -457,11 +454,12 @@ func (h *Hkr) FetchSummerTime(c *Client) (err error) {
 		return fmt.Errorf("%s", "Some required Inputs not found")
 	}
 
-	h.HkrUnstableInformation.SummerTimeFrame = SummerTime{
+	h.HkrUnstableInformation.SummerTime = SummerTime{
 		StartDay:   ssd.Attrs()["value"],
 		StartMonth: ssm.Attrs()["value"],
 		EndDay:     sed.Attrs()["value"],
 		EndMonth:   sem.Attrs()["value"],
+		IsEnabled:  true,
 	}
 
 	return nil
@@ -479,7 +477,20 @@ func (h *Hkr) PyaSetSummerTime(pya *PyAdapter, start time.Time, end time.Time) (
 	data["SummerEndMonth"] = ToUrlValue(end.Month())
 	data["SummerStartDay"] = ToUrlValue(start.Day())
 	data["SummerStartMonth"] = ToUrlValue(start.Month())
+	data["SummerEnabled"] = ToUrlValue(1)
 
+	_, err = pya.Client.doRequest(http.MethodPost, "data.lua", data, true)
+	return
+}
+
+// PyaDisablSummerTime disables the SummerTime for the HKR.
+func (h *Hkr) PyaDisablSummerTime(pya *PyAdapter) (err error) {
+	data, err := h.pyaPrepare(pya)
+	if err != nil {
+		return
+	}
+
+	data["SummerEnabled"] = ToUrlValue(0)
 	_, err = pya.Client.doRequest(http.MethodPost, "data.lua", data, true)
 	return
 }
@@ -842,17 +853,17 @@ type Holiday struct {
 	Enabled    int
 }
 
-// StartToDate converts the Start-Values to a time.Time-Struct
+// GetStartDate converts the Start-Values to a time.Time-Struct
 //
 //goland:noinspection GoMixedReceiverTypes
-func (h *Holiday) StartToDate() time.Time {
+func (h *Holiday) GetStartDate() time.Time {
 	return TimeFromDMH(h.StartDay, h.StartMonth, h.StartHour)
 }
 
-// EndToDate converts the End-Values to a time.Time-Struct
+// GetEndDate converts the End-Values to a time.Time-Struct
 //
 //goland:noinspection GoMixedReceiverTypes
-func (h *Holiday) EndToDate() time.Time {
+func (h *Holiday) GetEndDate() time.Time {
 	return TimeFromDMH(h.EndDay, h.EndMonth, h.EndHour)
 }
 
@@ -876,7 +887,7 @@ func (h Holiday) String() string {
 		return fmt.Sprintf("Holiday %d: Not Set\n", h.ID)
 	}
 
-	return fmt.Sprintf("Holiday %d: %s - %s\n", h.ID, h.StartToDate().Format("02.01, 15:04"), h.EndToDate().Format("02.01, 15:04"))
+	return fmt.Sprintf("Holiday %d: %s - %s\n", h.ID, h.GetStartDate().Format("02.01, 15:04"), h.GetEndDate().Format("02.01, 15:04"))
 }
 
 //goland:noinspection GoMixedReceiverTypes
@@ -924,8 +935,8 @@ func (h *Holidays) Validate() error {
 			continue
 		}
 
-		if hol1.StartToDate().After(hol1.EndToDate()) || hol1.StartToDate().Equal(hol1.EndToDate()) {
-			return fmt.Errorf("holiday start must be before holiday end: %s - %s", hol1.StartToDate(), hol1.EndToDate())
+		if hol1.GetStartDate().After(hol1.GetEndDate()) || hol1.GetStartDate().Equal(hol1.GetEndDate()) {
+			return fmt.Errorf("holiday start must be before holiday end: %s - %s", hol1.GetStartDate(), hol1.GetEndDate())
 		}
 
 		for j, hol2 := range h.Holidays {
@@ -934,9 +945,9 @@ func (h *Holidays) Validate() error {
 			}
 
 			if !hol1.IsEmpty() && !hol2.IsEmpty() &&
-				((hol1.StartToDate().Before(hol2.EndToDate()) || hol1.StartToDate().Equal(hol2.EndToDate())) &&
-					(hol1.EndToDate().After(hol2.StartToDate()) || hol1.EndToDate().Equal(hol2.StartToDate()))) {
-				return fmt.Errorf("holidays cannot overlap: %s - %s, %s - %s", hol1.StartToDate(), hol1.EndToDate(), hol2.StartToDate(), hol2.EndToDate())
+				((hol1.GetStartDate().Before(hol2.GetEndDate()) || hol1.GetStartDate().Equal(hol2.GetEndDate())) &&
+					(hol1.GetEndDate().After(hol2.GetStartDate()) || hol1.GetEndDate().Equal(hol2.GetStartDate()))) {
+				return fmt.Errorf("holidays cannot overlap: %s - %s, %s - %s", hol1.GetStartDate(), hol1.GetEndDate(), hol2.GetStartDate(), hol2.GetEndDate())
 			}
 		}
 	}
@@ -1011,6 +1022,24 @@ func (h *Hkr) PyaSetHolidays(pya *PyAdapter, holidays Holidays) (err error) {
 		data[k] = ToUrlValue(v)
 	}
 
+	_, err = pya.Client.doRequest(http.MethodPost, "data.lua", data, true)
+	return
+}
+
+// PyaDisableHoliday disables the given Holiday for the PYA.
+func (h *Hkr) PyaDisableHoliday(pya *PyAdapter, hol Holiday) (err error) {
+	data, err := h.pyaPrepare(pya)
+	if err != nil {
+		return
+	}
+
+	holStr := fmt.Sprintf("Holiday%dEnabled", hol.ID)
+	if data[holStr][0] != "1" {
+		err = fmt.Errorf("holiday %d is not enabled", hol.ID)
+		return
+	}
+
+	data[holStr] = ToUrlValue(0)
 	_, err = pya.Client.doRequest(http.MethodPost, "data.lua", data, true)
 	return
 }

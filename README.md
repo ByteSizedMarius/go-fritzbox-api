@@ -130,6 +130,7 @@ There are two (three) types of API-Endpoints used in this libary:
 ## Roadmap
 
 - Better documentation
+- Pya Cache
 - Implementing more smarthome-capabilities/HanFun-interfaces
 - Implementing endpoints for smarthome-templates (`gettemplatelistinfos`, `applytemplate`)
 
