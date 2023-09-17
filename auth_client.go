@@ -12,6 +12,7 @@ package go_fritzbox_api
 import (
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -153,7 +154,7 @@ func (c *Client) doRequest(method string, urlStr string, data url.Values, checkE
 		return nil, err
 	}
 
-	if sc := resp.StatusCode; sc > 200 || sc > 299 {
+	if sc := resp.StatusCode; sc < 200 || sc > 299 {
 		return nil, fmt.Errorf("invalid statuscode (%v)", resp.StatusCode)
 	}
 
@@ -270,7 +271,8 @@ func getFromOffset(main string, split string, offset int) string {
 func valueFromJson(body string, keys []string) (v map[string]interface{}, err error) {
 	err = json.Unmarshal([]byte(body), &v)
 	if err != nil {
-		if e, ok := err.(*json.SyntaxError); ok {
+		var e *json.SyntaxError
+		if errors.As(err, &e) {
 			log.Printf("syntax error at byte offset %d", e.Offset)
 		}
 

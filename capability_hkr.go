@@ -388,6 +388,10 @@ func (h *Hkr) pyaPrepare(pya *PyAdapter) (data url.Values, err error) {
 		data[k] = []string{v}
 	}
 
+	// hotfix: SID is invalidated after is us used with the webdriver
+	// todo: webdriver needs its own client, not use the same as we do
+	pya.Client.Initialize()
+
 	return data, nil
 }
 
