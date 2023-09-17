@@ -91,8 +91,8 @@ This Library is a Project I maintain and develop based on my personal needs. It'
 maintained alternatives, not because I'm necessarily proud of its implementation. Code quality is not great, especially
 older code. There are no tests, because what I would really like to test (whether what I'm sending the FritzBox is still
 correct, for example after a FritzOS-Update) is very difficult to implement. For example, for Testing if changing the
-Name for a Device works, I would have to get some Device, change the Name, check if it works, then change it back,
-without breaking anything in my internal Network. Doing this in a way that would allow other people to also execute
+Name for a Device works, I would have to get some Device, change the Name, check if it worked, then change it back,
+without breaking anything in my internal Network. Doing this in a way that would also allow other people to execute
 these Tests is even more difficult.
 
 ### Types of API-Endpoints
@@ -101,31 +101,37 @@ There are two (three) types of API-Endpoints used in this libary:
 
 - DECT: These are the endpoints used for smarthome-devices. They are documented in
   the [official documentation](https://avm.de/fileadmin/user_upload/Global/Service/Schnittstellen/AHA-HTTP-Interface.pdf)
-  and usually do not change. These Endpoints are implemented in the `smarthome`-package and their respective Functions
-  have the Prefix `DECT`.
-- Frontend Endpoints: POST-Request are sent to the FritzBox mimicking the Requests the FrontEnd would send during normal
-  User Interaction. Because the required Parameters change regularly, all of these Endpoints are unstable and may break
-  at any time. They are usually marked as Unstable in their GoDoc. In the beginning I was planning to use
-  this type of Request for most of the Functionality I need, but I quickly ran into a Roadblock with the Requests'
+  and usually do not change. These Endpoints are implemented in the `smarthome_`-parts of this package and their
+  respective Functions have the Prefix `DECT`.
+- Frontend Endpoints: POST-Request are sent to the FritzBox mimicking the Requests the Front-End would send during
+  normal
+  User Interaction. Because the required Parameters seem to change semi-regularly, all of these Endpoints are unstable
+  and may break
+  at any time. They are usually marked as `Unstable` in their GoDoc. In the beginning I was planning to use
+  this type of Request for most of the Functionality I needed, but I quickly ran into a Roadblock with the Requests'
   Parameters. For Example when editing a Device, the Request sent by the Frontend always contains all the Devices'
   Parameters, even if they haven't changed. This means, no matter what Setting you want to change, you would have to get
   all the Parameters for a Device, change the one you want to change, then send all the Parameters back to the FritzBox.
   While sometimes, Parameters are optional in the Request, the FritzBox seems to reset these Params to their default if
   you don't send them. This proved basically impossible, because I would have to manually parse the Parameters for every
-  Request from the respective Setting Pages HTML. Instead, this Type of Request is only used for Endpoints that
-  fetch and parse Data, like the `GetClientList`-Endpoint (There are still older Endpoints that use this Type of
-  Request, but I'm planning to change them at some point).
+  Request from the respective Setting Pages HTML, then convert them to the Format the Request expects. Doing this for
+  every Setting, and for every Value the given Setting can be set to, is unfeasible.
+  Instead, this Type of Request is only used for Endpoints that fetch and parse Data, like the `GetClientList`-Endpoint
+  (There are still older Endpoints that use this Type of Request, but I'm planning to change them at some point).
 - PYA Endpoints: What I came up with for the Problem described above are PYA Endpoints, where PYA stands for Python
   Adapter. When wanting to use PYA Endpoints, a PyAdapter-Struct has to be created and started. This will start
   the [Python-Script](/pyAdapter/) which in turn starts a headless Chromedriver and listens to commands on stdin. The
-  Chromedriver is used to send an empty Request to the FritzBox in order to retrieve the required Parameters, which are
-  then returned to the Go-Program. After the Parameters have been retrieved, it is then simple to change some Parameters
-  and send the correct Post-Request to the FritBox. Retrieving the Parameters takes some Time (1-3 seconds), but
-  generally, it's not much slower than some of the Endpoints of the official Smarthome-API. To improve the Time it takes
-  to retrieve the Parameters, the PyAdapter is started concurrently to the Go-Program, meaning the Chromedriver is
-  already started and logged in to the Fritzbox, which takes about 7 seconds. This means a "cold" start, where the
-  PyAdapter first has to start and log in before sending the request can take up to 10 seconds. Currently the PYA
-  expects the Webdriver in the PyAdapter directory or in the Path.
+  Chromedriver is used to send an "empty" Request to the FritzBox in order to retrieve the required Parameters, which
+  are then returned to the Go-Program. After the Parameters have been retrieved, it is then simple to change the
+  Parameter of the Setting we want to change and send the Post-Request to the FritBox. Retrieving the Parameters takes
+  some Time (1-3 seconds), but generally, it's not much slower than some of the Endpoints of the official Smarthome-API.
+  To improve the Time it takes to retrieve the Parameters, the PyAdapter is started concurrently to the Go-Program,
+  meaning the Chromedriver is already started and logged in to the Fritzbox, which takes up to 7 seconds total. This
+  means a "cold" start, where the PyAdapter first has to start and log in before sending the request can take up to 10
+  seconds. Further improvements to Speed can be made by caching the parameters, which I plan on doing at some point.
+  However, caching will only work if no manual changes are made in the FritzBox-Interface to the given Device, because
+  this would invalidate the cached Parameters and thus lead to the manual changes being overridden on the next change
+  request. Currently the PYA expects the Webdriver in the PyAdapter directory or in the Path.
 
 ## Roadmap
 
