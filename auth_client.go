@@ -31,6 +31,15 @@ type Client struct {
 	client  *http.Client
 }
 
+func (c *Client) Copy() *Client {
+	nc := Client{
+		BaseUrl:  c.BaseUrl,
+		Username: c.Username,
+		Password: c.Password,
+	}
+	return &nc
+}
+
 func (c *Client) SetCustomHTTPClient(client *http.Client) {
 	c.client = client
 }
@@ -211,7 +220,7 @@ func (c *Client) String() string {
 }
 
 // auth sends an auth request and returns an error, if any. session is stored
-// in Client in order to perform requests with authentification.
+// in Client in order to perform requests with authentication.
 func (c *Client) auth(username, password string) error {
 	var s *session
 	if c.session == nil {

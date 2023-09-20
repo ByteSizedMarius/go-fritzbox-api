@@ -380,6 +380,7 @@ func (h *Hkr) pyaPrepare(pya *PyAdapter) (data url.Values, err error) {
 		return
 	}
 
+	// todo check Client SID expiry
 	data = url.Values{
 		"sid": {pya.Client.SID()},
 	}
@@ -387,10 +388,6 @@ func (h *Hkr) pyaPrepare(pya *PyAdapter) (data url.Values, err error) {
 	for k, v := range params {
 		data[k] = []string{v}
 	}
-
-	// hotfix: SID is invalidated after is us used with the webdriver
-	// todo: webdriver needs its own client, not use the same as we do
-	pya.Client.Initialize()
 
 	return data, nil
 }
@@ -472,6 +469,8 @@ func (h *Hkr) FetchSummerTime(c *Client) (err error) {
 // PyaSetSummerTime sets the SummerTime for the HKR.
 // Only Day/Month of the Time-Values is required. The Helper-Method TimeFromMD can be used to create the Time-Values.
 func (h *Hkr) PyaSetSummerTime(pya *PyAdapter, start time.Time, end time.Time) (err error) {
+	// todo: Heizungs aus- und Urlaubszeiträume dürfen sich nicht überschneiden
+
 	data, err := h.pyaPrepare(pya)
 	if err != nil {
 		return
@@ -482,6 +481,8 @@ func (h *Hkr) PyaSetSummerTime(pya *PyAdapter, start time.Time, end time.Time) (
 	data["SummerStartDay"] = ToUrlValue(start.Day())
 	data["SummerStartMonth"] = ToUrlValue(start.Month())
 	data["SummerEnabled"] = ToUrlValue(1)
+
+	fmt.Println(data)
 
 	_, err = pya.Client.doRequest(http.MethodPost, "data.lua", data, true)
 	return
