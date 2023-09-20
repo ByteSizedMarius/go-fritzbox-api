@@ -28,6 +28,7 @@ type PyAdapter struct {
 	Debug  bool
 	// DriverArgs are the arguments that are passed to the chromedriver using options.add_argument().
 	DriverArgs []string
+	pyaClient  *Client
 	adapter    *exec.Cmd
 	running    bool
 	writer     *bufio.Writer
@@ -35,14 +36,23 @@ type PyAdapter struct {
 }
 
 const (
-	Timeout             = 2 * time.Second
 	RefreshSession      = true
+	Timeout             = 2 * time.Second
 	RefreshSessionDelay = 17 * time.Minute
 )
 
 // StartAdapter starts the Python Script, logs in and starts the sessionRefresher if RefreshSession is set to true.
 func (pya *PyAdapter) StartAdapter() error {
-	err := pya.openAdapter()
+
+	// SID is invalidated after is us used with the webdriver
+	// Thus, the Webdriver needs its own client
+	pya.pyaClient = pya.Client.Copy()
+	err := pya.pyaClient.Initialize()
+	if err != nil {
+		return err
+	}
+
+	err = pya.openAdapter()
 	if err != nil {
 		return err
 	}
@@ -68,12 +78,13 @@ func (pya *PyAdapter) StartAdapter() error {
 }
 
 func (pya *PyAdapter) GetArgsHKR(device Hkr) (params map[string]string, err error) {
-	if err = pya.Client.checkExpiry(); err != nil {
+
+	if err = pya.pyaClient.checkExpiry(); err != nil {
 		return
 	}
 
 	// Send Request
-	err = write(pya.writer, fmt.Sprintf("HKR %s %s", pya.Client.BaseUrl, device.device.ID))
+	err = write(pya.writer, fmt.Sprintf("HKR %s %s", pya.pyaClient.BaseUrl, device.device.ID))
 	if err != nil {
 		return
 	}
@@ -170,12 +181,12 @@ func (pya *PyAdapter) openAdapter() (err error) {
 }
 
 func (pya *PyAdapter) login() (err error) {
-	if err = pya.Client.checkExpiry(); err != nil {
+	if err = pya.pyaClient.checkExpiry(); err != nil {
 		return
 	}
 
 	// Send Login
-	err = write(pya.writer, fmt.Sprintf("LOGIN %s %s", pya.Client.BaseUrl, pya.Client.SID()))
+	err = write(pya.writer, fmt.Sprintf("LOGIN %s %s", pya.pyaClient.BaseUrl, pya.pyaClient.SID()))
 	if err != nil {
 		return
 	}
