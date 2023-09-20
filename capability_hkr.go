@@ -394,7 +394,7 @@ func (h *Hkr) pyaPrepare(pya *PyAdapter) (data url.Values, err error) {
 
 // -------------------------------------------
 //
-// Summer-Time
+// Summertime
 //
 // -------------------------------------------
 
@@ -409,14 +409,58 @@ type SummerTime struct {
 	EndMonth   string
 }
 
+func (stf *SummerTime) FromDates(start time.Time, end time.Time) {
+	stf.StartDay = strconv.Itoa(start.Day())
+	stf.StartMonth = strconv.Itoa(int(start.Month()))
+	stf.EndDay = strconv.Itoa(end.Day())
+	stf.EndMonth = strconv.Itoa(int(end.Month()))
+	stf.IsEnabled = true
+}
+
 // GetStartDate returns a formatted time.Time-Struct for the Start of the SummerTime-Frame
-func (stf SummerTime) GetStartDate() time.Time {
+func (stf *SummerTime) GetStartDate() time.Time {
 	return dateHelper(stf.StartMonth, stf.StartDay)
 }
 
 // GetEndDate returns a formatted time.Time-Struct for the End of the SummerTime-Frame
-func (stf SummerTime) GetEndDate() time.Time {
+func (stf *SummerTime) GetEndDate() time.Time {
 	return dateHelper(stf.EndMonth, stf.EndDay)
+}
+
+// IsEmpty returns true, if the SummerTime is empty or not enabled.
+func (stf *SummerTime) IsEmpty() bool {
+	return stf.IsEnabled == false && stf.StartDay == "" && stf.StartMonth == "" && stf.EndDay == "" && stf.EndMonth == ""
+
+}
+
+// Validate checks, if the SummerTime is valid.
+// For this, it needs the Holidays, as SummerTime and Holidays cannot overlap.
+// Validation happens automatically on the call of PyaSetSummerTime, with no additional time cost for fetching the holidays.
+func (stf *SummerTime) Validate(holidays Holidays) (err error) {
+	if err = holidays.Validate(); err != nil {
+		return err
+	}
+
+	if !stf.IsEnabled || stf.IsEmpty() {
+		return fmt.Errorf("summertime is empty or not enabled")
+	}
+
+	if stf.GetStartDate().After(stf.GetEndDate()) || stf.GetStartDate().Equal(stf.GetEndDate()) {
+		return fmt.Errorf("summertime start must be before holiday end: %s - %s", stf.GetStartDate(), stf.GetEndDate())
+	}
+
+	// Check if the Summertime overlaps with any holiday
+	for _, hol := range holidays.Holidays {
+		if !hol.IsEnabled() {
+			continue
+		}
+
+		if DoDatesOverlap(stf.GetStartDate(), stf.GetEndDate(), hol.GetStartDate(), hol.GetEndDate()) {
+			return fmt.Errorf("summertime overlaps with holiday %s - %s", hol.GetStartDate().Format("02.01."), hol.GetEndDate().Format("02.01."))
+		}
+	}
+
+	return nil
 }
 
 // FetchSummerTime fetches the SummerTime-Frame for the HKR. It does not return anything, but instead fills the SummerTimeFrame-Field for the Hkr.
@@ -467,29 +511,39 @@ func (h *Hkr) FetchSummerTime(c *Client) (err error) {
 }
 
 // PyaSetSummerTime sets the SummerTime for the HKR.
-// Only Day/Month of the Time-Values is required. The Helper-Method TimeFromMD can be used to create the Time-Values.
-func (h *Hkr) PyaSetSummerTime(pya *PyAdapter, start time.Time, end time.Time) (err error) {
-	// todo: Heizungs aus- und Urlaubszeiträume dürfen sich nicht überschneiden
+// Only Day/Month of the Time-Values is required. The Helper-Method DateFromMD can be used to create the Time-Values.
+func (h *Hkr) PyaSetSummerTime(pya *PyAdapter, st SummerTime) (err error) {
 
+	// get the data
 	data, err := h.pyaPrepare(pya)
 	if err != nil {
 		return
 	}
 
-	data["SummerEndDay"] = ToUrlValue(end.Day())
-	data["SummerEndMonth"] = ToUrlValue(end.Month())
-	data["SummerStartDay"] = ToUrlValue(start.Day())
-	data["SummerStartMonth"] = ToUrlValue(start.Month())
-	data["SummerEnabled"] = ToUrlValue(1)
+	// parse the holidays from data
+	holidays, err := parseHolidaysFromData(data)
+	if err != nil {
+		return
+	}
 
-	fmt.Println(data)
+	// validate the given summertime using the holidays
+	if err = st.Validate(holidays); err != nil {
+		return
+	}
+
+	// update the data
+	data["SummerEndDay"] = ToUrlValue(st.EndDay)
+	data["SummerEndMonth"] = ToUrlValue(st.EndMonth)
+	data["SummerStartDay"] = ToUrlValue(st.StartDay)
+	data["SummerStartMonth"] = ToUrlValue(st.StartMonth)
+	data["SummerEnabled"] = ToUrlValue(1)
 
 	_, err = pya.Client.doRequest(http.MethodPost, "data.lua", data, true)
 	return
 }
 
-// PyaDisablSummerTime disables the SummerTime for the HKR.
-func (h *Hkr) PyaDisablSummerTime(pya *PyAdapter) (err error) {
+// PyaDisableSummerTime disables the SummerTime for the HKR.
+func (h *Hkr) PyaDisableSummerTime(pya *PyAdapter) (err error) {
 	data, err := h.pyaPrepare(pya)
 	if err != nil {
 		return
@@ -504,8 +558,7 @@ func dateHelper(month string, day string) time.Time {
 	monthNr, _ := strconv.Atoi(month)
 	dayNr, _ := strconv.Atoi(day)
 
-	now := time.Now()
-	return time.Date(now.Year(), time.Month(monthNr), dayNr, 0, 0, 0, 0, time.UTC)
+	return DateFromMD(monthNr, dayNr)
 }
 
 // -------------------------------------------
@@ -638,7 +691,7 @@ func (z *Zeitschaltung) Validate() error {
 		}
 		for _, s := range t.Slots {
 			m := s.Start.Minute()
-			if !(m == 0 || m == 15 || m == 30 || m == 45) {
+			if m >= 60 || m < 0 || m%15 != 0 {
 				return fmt.Errorf("invalid minute: %d", m)
 			}
 		}
@@ -950,8 +1003,7 @@ func (h *Holidays) Validate() error {
 			}
 
 			if !hol1.IsEmpty() && !hol2.IsEmpty() &&
-				((hol1.GetStartDate().Before(hol2.GetEndDate()) || hol1.GetStartDate().Equal(hol2.GetEndDate())) &&
-					(hol1.GetEndDate().After(hol2.GetStartDate()) || hol1.GetEndDate().Equal(hol2.GetStartDate()))) {
+				DoDatesOverlap(hol1.GetStartDate(), hol1.GetEndDate(), hol2.GetStartDate(), hol2.GetEndDate()) {
 				return fmt.Errorf("holidays cannot overlap: %s - %s, %s - %s", hol1.GetStartDate(), hol1.GetEndDate(), hol2.GetStartDate(), hol2.GetEndDate())
 			}
 		}
