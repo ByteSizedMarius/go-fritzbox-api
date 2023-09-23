@@ -3,6 +3,7 @@ package go_fritzbox_api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ByteSizedMarius/go-fritzbox-api/util"
 	"github.com/anaskhan96/soup"
 	"math"
 	"net/http"
@@ -455,7 +456,7 @@ func (stf *SummerTime) Validate(holidays Holidays) (err error) {
 			continue
 		}
 
-		if DoDatesOverlap(stf.GetStartDate(), stf.GetEndDate(), hol.GetStartDate(), hol.GetEndDate()) {
+		if util.DoDatesOverlap(stf.GetStartDate(), stf.GetEndDate(), hol.GetStartDate(), hol.GetEndDate()) {
 			return fmt.Errorf("summertime overlaps with holiday %s - %s", hol.GetStartDate().Format("02.01."), hol.GetEndDate().Format("02.01."))
 		}
 	}
@@ -532,11 +533,11 @@ func (h *Hkr) PyaSetSummerTime(pya *PyAdapter, st SummerTime) (err error) {
 	}
 
 	// update the data
-	data["SummerEndDay"] = ToUrlValue(st.EndDay)
-	data["SummerEndMonth"] = ToUrlValue(st.EndMonth)
-	data["SummerStartDay"] = ToUrlValue(st.StartDay)
-	data["SummerStartMonth"] = ToUrlValue(st.StartMonth)
-	data["SummerEnabled"] = ToUrlValue(1)
+	data["SummerEndDay"] = util.ToUrlValue(st.EndDay)
+	data["SummerEndMonth"] = util.ToUrlValue(st.EndMonth)
+	data["SummerStartDay"] = util.ToUrlValue(st.StartDay)
+	data["SummerStartMonth"] = util.ToUrlValue(st.StartMonth)
+	data["SummerEnabled"] = util.ToUrlValue(1)
 
 	_, err = pya.Client.doRequest(http.MethodPost, "data.lua", data, true)
 	return
@@ -549,7 +550,7 @@ func (h *Hkr) PyaDisableSummerTime(pya *PyAdapter) (err error) {
 		return
 	}
 
-	data["SummerEnabled"] = ToUrlValue(0)
+	data["SummerEnabled"] = util.ToUrlValue(0)
 	_, err = pya.Client.doRequest(http.MethodPost, "data.lua", data, true)
 	return
 }
@@ -558,7 +559,7 @@ func dateHelper(month string, day string) time.Time {
 	monthNr, _ := strconv.Atoi(month)
 	dayNr, _ := strconv.Atoi(day)
 
-	return DateFromMD(monthNr, dayNr)
+	return util.DateFromMD(monthNr, dayNr)
 }
 
 // -------------------------------------------
@@ -586,7 +587,7 @@ func (h *Hkr) PyaSetZeitschaltung(pya *PyAdapter, z Zeitschaltung) (err error) {
 
 	slots := z.ToValues()
 	for k, v := range slots {
-		data[k] = ToUrlValue(v)
+		data[k] = util.ToUrlValue(v)
 	}
 
 	_, err = pya.Client.doRequest(http.MethodPost, "data.lua", data, true)
@@ -711,7 +712,7 @@ func (z *Zeitschaltung) ToValues() map[string]string {
 			t.Tag = 7
 		}
 		// 1 = montag, 2 = dienstag, ..., 64 = sonntag
-		day := Pow(2, int(t.Tag)-1)
+		day := util.Pow(2, int(t.Tag)-1)
 
 		for _, s := range t.Slots {
 			timerItems[fmt.Sprintf("timer_item_%d", i*2)] = fmt.Sprintf("%s;%d;%d", s.StartString(), 1, day)
@@ -811,7 +812,7 @@ func parseZeitschaltungFromData(data url.Values) (z Zeitschaltung, err error) {
 		}
 
 		// iterate over the binary representation
-		for i, c := range Reverse(strings.ReplaceAll(fmt.Sprintf("%8s", strconv.FormatInt(int64(appliesTo), 2)), " ", "0")) {
+		for i, c := range util.Reverse(strings.ReplaceAll(fmt.Sprintf("%8s", strconv.FormatInt(int64(appliesTo), 2)), " ", "0")) {
 			if c == '1' {
 				// the first value is the time
 				var t time.Time
@@ -915,14 +916,14 @@ type Holiday struct {
 //
 //goland:noinspection GoMixedReceiverTypes
 func (h *Holiday) GetStartDate() time.Time {
-	return DateFromMDH(h.StartMonth, h.StartDay, h.StartHour)
+	return util.DateFromMDH(h.StartMonth, h.StartDay, h.StartHour)
 }
 
 // GetEndDate converts the End-Values to a time.Time-Struct
 //
 //goland:noinspection GoMixedReceiverTypes
 func (h *Holiday) GetEndDate() time.Time {
-	return DateFromMDH(h.EndMonth, h.EndDay, h.EndHour)
+	return util.DateFromMDH(h.EndMonth, h.EndDay, h.EndHour)
 }
 
 // IsEmpty returns true if the given Holiday is empty
@@ -1003,7 +1004,7 @@ func (h *Holidays) Validate() error {
 			}
 
 			if !hol1.IsEmpty() && !hol2.IsEmpty() &&
-				DoDatesOverlap(hol1.GetStartDate(), hol1.GetEndDate(), hol2.GetStartDate(), hol2.GetEndDate()) {
+				util.DoDatesOverlap(hol1.GetStartDate(), hol1.GetEndDate(), hol2.GetStartDate(), hol2.GetEndDate()) {
 				return fmt.Errorf("holidays cannot overlap: %s - %s, %s - %s", hol1.GetStartDate(), hol1.GetEndDate(), hol2.GetStartDate(), hol2.GetEndDate())
 			}
 		}
@@ -1076,7 +1077,7 @@ func (h *Hkr) PyaSetHolidays(pya *PyAdapter, holidays Holidays) (err error) {
 	}
 
 	for k, v := range holidays.ToValues() {
-		data[k] = ToUrlValue(v)
+		data[k] = util.ToUrlValue(v)
 	}
 
 	_, err = pya.Client.doRequest(http.MethodPost, "data.lua", data, true)
@@ -1096,7 +1097,7 @@ func (h *Hkr) PyaDisableHoliday(pya *PyAdapter, hol Holiday) (err error) {
 		return
 	}
 
-	data[holStr] = ToUrlValue(0)
+	data[holStr] = util.ToUrlValue(0)
 	_, err = pya.Client.doRequest(http.MethodPost, "data.lua", data, true)
 	return
 }
@@ -1116,11 +1117,11 @@ func (h *Hkr) PyaDisableCurrentHoliday(pya *PyAdapter) (err error) {
 
 	for _, hol := range holidays.Holidays {
 		now := time.Now()
-		end := DateFromYMDH(now.Year(), hol.EndMonth, hol.EndDay, hol.EndHour)
-		start := DateFromYMDH(now.Year(), hol.StartMonth, hol.StartDay, hol.StartHour)
+		end := util.DateFromYMDH(now.Year(), hol.EndMonth, hol.EndDay, hol.EndHour)
+		start := util.DateFromYMDH(now.Year(), hol.StartMonth, hol.StartDay, hol.StartHour)
 
 		if hol.IsEnabled() && start.Before(time.Now()) && end.After(time.Now()) {
-			data[fmt.Sprintf("Holiday%dEnabled", hol.ID)] = ToUrlValue(0)
+			data[fmt.Sprintf("Holiday%dEnabled", hol.ID)] = util.ToUrlValue(0)
 			_, err = pya.Client.doRequest(http.MethodPost, "data.lua", data, true)
 
 			// there can only be exactly one active holiday, so we can stop here
@@ -1129,6 +1130,20 @@ func (h *Hkr) PyaDisableCurrentHoliday(pya *PyAdapter) (err error) {
 	}
 
 	return fmt.Errorf("no holiday is currently enabled")
+}
+
+func (h *Hkr) PyaDisableAllHolidays(pya *PyAdapter) (err error) {
+	data, err := h.pyaPrepare(pya)
+	if err != nil {
+		return
+	}
+
+	for i := 1; i <= 4; i++ {
+		data[fmt.Sprintf("Holiday%dEnabled", i)] = util.ToUrlValue(0)
+	}
+
+	_, err = pya.Client.doRequest(http.MethodPost, "data.lua", data, true)
+	return
 }
 
 func parseHolidaysFromData(data url.Values) (h Holidays, err error) {
