@@ -381,7 +381,13 @@ func (h *Hkr) pyaPrepare(pya *PyAdapter) (data url.Values, err error) {
 		return
 	}
 
-	// todo check Client SID expiry
+	// SID is invalidated after it is used with the webdriver, even if the driver has its own client
+	// not sure why, but regenerating the SID doesn't hurt much
+	err = pya.Client.Initialize()
+	if err != nil {
+		return
+	}
+
 	data = url.Values{
 		"sid": {pya.Client.SID()},
 	}
@@ -410,6 +416,9 @@ type SummerTime struct {
 	EndMonth   string
 }
 
+// FromDates allows the Creation of a SummerTime struct using two dates
+//
+//goland:noinspection GoMixedReceiverTypes
 func (stf *SummerTime) FromDates(start time.Time, end time.Time) {
 	stf.StartDay = strconv.Itoa(start.Day())
 	stf.StartMonth = strconv.Itoa(int(start.Month()))
@@ -419,16 +428,22 @@ func (stf *SummerTime) FromDates(start time.Time, end time.Time) {
 }
 
 // GetStartDate returns a formatted time.Time-Struct for the Start of the SummerTime-Frame
+//
+//goland:noinspection GoMixedReceiverTypes
 func (stf *SummerTime) GetStartDate() time.Time {
 	return dateHelper(stf.StartMonth, stf.StartDay)
 }
 
 // GetEndDate returns a formatted time.Time-Struct for the End of the SummerTime-Frame
+//
+//goland:noinspection GoMixedReceiverTypes
 func (stf *SummerTime) GetEndDate() time.Time {
 	return dateHelper(stf.EndMonth, stf.EndDay)
 }
 
 // IsEmpty returns true, if the SummerTime is empty or not enabled.
+//
+//goland:noinspection GoMixedReceiverTypes
 func (stf *SummerTime) IsEmpty() bool {
 	return stf.IsEnabled == false && stf.StartDay == "" && stf.StartMonth == "" && stf.EndDay == "" && stf.EndMonth == ""
 
@@ -437,6 +452,8 @@ func (stf *SummerTime) IsEmpty() bool {
 // Validate checks, if the SummerTime is valid.
 // For this, it needs the Holidays, as SummerTime and Holidays cannot overlap.
 // Validation happens automatically on the call of PyaSetSummerTime, with no additional time cost for fetching the holidays.
+//
+//goland:noinspection GoMixedReceiverTypes
 func (stf *SummerTime) Validate(holidays Holidays) (err error) {
 	if err = holidays.Validate(); err != nil {
 		return err
@@ -447,7 +464,8 @@ func (stf *SummerTime) Validate(holidays Holidays) (err error) {
 	}
 
 	if stf.GetStartDate().After(stf.GetEndDate()) || stf.GetStartDate().Equal(stf.GetEndDate()) {
-		return fmt.Errorf("summertime start must be before holiday end: %s - %s", stf.GetStartDate(), stf.GetEndDate())
+		return fmt.Errorf("summertime start must be before summertime end: %s - %s",
+			stf.GetStartDate().Format("02.01"), stf.GetEndDate().Format("02.01"))
 	}
 
 	// Check if the Summertime overlaps with any holiday
@@ -462,6 +480,12 @@ func (stf *SummerTime) Validate(holidays Holidays) (err error) {
 	}
 
 	return nil
+}
+
+//goland:noinspection GoMixedReceiverTypes
+func (stf SummerTime) String() string {
+	return fmt.Sprintf("SummerTime: {Start: %s, End: %s, Enabled: %t}",
+		stf.GetStartDate().Format("02.01."), stf.GetEndDate().Format("02.01."), stf.IsEnabled)
 }
 
 // FetchSummerTime fetches the SummerTime-Frame for the HKR. It does not return anything, but instead fills the SummerTimeFrame-Field for the Hkr.
