@@ -1,4 +1,4 @@
-package go_fritzbox_api
+package util
 
 import (
 	"fmt"

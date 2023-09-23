@@ -3,6 +3,7 @@ package go_fritzbox_api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ByteSizedMarius/go-fritzbox-api/util"
 	"github.com/clbanning/mxj/v2"
 	"net/http"
 	"net/url"
@@ -71,7 +72,7 @@ func (t *Temperature) PyaSetOffset(pya *PyAdapter, offset float64) (err error) {
 
 	hkr := GetCapability[*Hkr](*t.Device())
 	data, err := hkr.pyaPrepare(pya)
-	data["Offset"] = ToUrlValue(offset)
+	data["Offset"] = util.ToUrlValue(offset)
 
 	_, err = pya.Client.doRequest(http.MethodPost, "data.lua", data, true)
 	if err != nil {
