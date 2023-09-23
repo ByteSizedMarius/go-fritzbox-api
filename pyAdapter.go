@@ -78,7 +78,6 @@ func (pya *PyAdapter) StartAdapter() error {
 }
 
 func (pya *PyAdapter) GetArgsHKR(device Hkr) (params map[string]string, err error) {
-
 	if err = pya.pyaClient.checkExpiry(); err != nil {
 		return
 	}
