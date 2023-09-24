@@ -354,20 +354,14 @@ func (h *Hkr) PyaFetchInformation(pya *PyAdapter) (err error) {
 		return
 	}
 
-	h.HkrUnstableInformation.SummerTime = SummerTime{
-		StartDay:   data["SummerStartDay"][0],
-		StartMonth: data["SummerStartMonth"][0],
-		EndDay:     data["SummerEndDay"][0],
-		EndMonth:   data["SummerEndMonth"][0],
-		IsEnabled:  data["SummerEnabled"][0] == "1",
-	}
+	h.HkrUnstableInformation.SummerTime = SummerTime{}.fromData(data)
 
-	h.HkrUnstableInformation.Zeitschaltung, err = parseZeitschaltungFromData(data)
+	h.HkrUnstableInformation.Zeitschaltung, err = Zeitschaltung{}.fromData(data)
 	if err != nil {
 		return
 	}
 
-	h.HkrUnstableInformation.Holidays, err = parseHolidaysFromData(data)
+	h.HkrUnstableInformation.Holidays, err = Holidays{}.fromData(data)
 	if err != nil {
 		return
 	}
@@ -427,6 +421,16 @@ func (stf *SummerTime) FromDates(start time.Time, end time.Time) {
 	stf.IsEnabled = true
 }
 
+//goland:noinspection GoMixedReceiverTypes
+func (SummerTime) fromData(data url.Values) (st SummerTime) {
+	st.StartDay = data["SummerStartDay"][0]
+	st.StartMonth = data["SummerStartMonth"][0]
+	st.EndDay = data["SummerEndDay"][0]
+	st.EndMonth = data["SummerEndMonth"][0]
+	st.IsEnabled = data["SummerEnabled"][0] == "1"
+	return
+}
+
 // GetStartDate returns a formatted time.Time-Struct for the Start of the SummerTime-Frame
 //
 //goland:noinspection GoMixedReceiverTypes
@@ -455,7 +459,7 @@ func (stf *SummerTime) IsEmpty() bool {
 //
 //goland:noinspection GoMixedReceiverTypes
 func (stf *SummerTime) Validate(holidays Holidays) (err error) {
-	if err = holidays.Validate(); err != nil {
+	if err = holidays.validateHolidays(); err != nil {
 		return err
 	}
 
@@ -538,7 +542,6 @@ func (h *Hkr) FetchSummerTime(c *Client) (err error) {
 // PyaSetSummerTime sets the SummerTime for the HKR.
 // Only Day/Month of the Time-Values is required. The Helper-Method DateFromMD can be used to create the Time-Values.
 func (h *Hkr) PyaSetSummerTime(pya *PyAdapter, st SummerTime) (err error) {
-
 	// get the data
 	data, err := h.pyaPrepare(pya)
 	if err != nil {
@@ -546,7 +549,7 @@ func (h *Hkr) PyaSetSummerTime(pya *PyAdapter, st SummerTime) (err error) {
 	}
 
 	// parse the holidays from data
-	holidays, err := parseHolidaysFromData(data)
+	holidays, err := Holidays{}.fromData(data)
 	if err != nil {
 		return
 	}
@@ -799,7 +802,9 @@ func (z Zeitschaltung) String() string {
 
 // Contains algorithm to parse the Zeitschaltung for the HKR from the Post-Parameters given, when a HKR-Device is edited.
 // Algorithm can surely be improved, also there is a small Bug when Timeframes last until Midnight.
-func parseZeitschaltungFromData(data url.Values) (z Zeitschaltung, err error) {
+//
+//goland:noinspection GoMixedReceiverTypes
+func (Zeitschaltung) fromData(data url.Values) (z Zeitschaltung, err error) {
 	// keep track of the days
 	days := map[time.Weekday][]ZeitSlot{}
 
@@ -916,6 +921,8 @@ func parseZeitschaltungFromData(data url.Values) (z Zeitschaltung, err error) {
 //
 // -------------------------------------------
 
+// todo always keep holidays sorted by ID
+
 // Holidays is the Struct that is used to set Holidays for the HKR.
 // The FritzBox allows a maximum of 4 Holidays.
 type Holidays struct {
@@ -985,13 +992,14 @@ func (h *Holiday) fromData(data url.Values, id int) {
 	h.Enabled, _ = strconv.Atoi(data[fmt.Sprintf("Holiday%dEnabled", id)][0])
 }
 
-// AddHoliday adds a Holiday to the Holidays-Struct. It returns an error if the maximum amount of Holidays is reached.
+// AddHoliday adds a Holiday to the Holidays-Struct. Helper Method. No Request is sent.
+// It returns an error if the maximum amount of Holidays is reached.
 // Holidays added via this Method are enabled by default. There can be 0-4 Holidays total.
 //
 //goland:noinspection GoMixedReceiverTypes
 func (h *Holidays) AddHoliday(from time.Time, to time.Time) error {
 	for i, hol := range h.Holidays {
-		if hol.ID == 0 {
+		if !hol.IsEnabled() {
 			h.Holidays[i] = Holiday{
 				ID:         i + 1,
 				StartDay:   from.Day(),
@@ -1012,14 +1020,26 @@ func (h *Holidays) AddHoliday(from time.Time, to time.Time) error {
 // Holidays are invalid, if any Holidays overlap, or if the Start is after the End-Date of the same Holiday.
 //
 //goland:noinspection GoMixedReceiverTypes
-func (h *Holidays) Validate() error {
+func (h *Holidays) Validate(stf SummerTime) error {
+
+	// Validate with Summertime (Dates cannot overlap)
+	err := stf.Validate(*h)
+	if err != nil {
+		return err
+	}
+
+	return h.validateHolidays()
+}
+
+//goland:noinspection GoMixedReceiverTypes
+func (h *Holidays) validateHolidays() error {
 	for i, hol1 := range h.Holidays {
 		if hol1.IsEmpty() || !hol1.IsEnabled() {
 			continue
 		}
 
 		if hol1.GetStartDate().After(hol1.GetEndDate()) || hol1.GetStartDate().Equal(hol1.GetEndDate()) {
-			return fmt.Errorf("holiday start must be before holiday end: %s - %s", hol1.GetStartDate(), hol1.GetEndDate())
+			return fmt.Errorf("holiday start must be before holiday end: %s - %s", hol1.GetStartDate().Format("02.01"), hol1.GetEndDate().Format("02.01"))
 		}
 
 		for j, hol2 := range h.Holidays {
@@ -1027,9 +1047,8 @@ func (h *Holidays) Validate() error {
 				continue
 			}
 
-			if !hol1.IsEmpty() && !hol2.IsEmpty() &&
-				util.DoDatesOverlap(hol1.GetStartDate(), hol1.GetEndDate(), hol2.GetStartDate(), hol2.GetEndDate()) {
-				return fmt.Errorf("holidays cannot overlap: %s - %s, %s - %s", hol1.GetStartDate(), hol1.GetEndDate(), hol2.GetStartDate(), hol2.GetEndDate())
+			if util.DoDatesOverlap(hol1.GetStartDate(), hol1.GetEndDate(), hol2.GetStartDate(), hol2.GetEndDate()) {
+				return fmt.Errorf("holidays cannot overlap: %s - %s, %s - %s", hol1.GetStartDate().Format("02.01"), hol1.GetEndDate().Format("02.01"), hol2.GetStartDate().Format("02.01"), hol2.GetEndDate().Format("02.01"))
 			}
 		}
 	}
@@ -1087,15 +1106,26 @@ func (h Holidays) String() string {
 	return rt
 }
 
+// sort sorts the Holidays by ID.
+// If this is not done, they might be in an inconsistent order.
+//
+//goland:noinspection GoMixedReceiverTypes
+func (h *Holidays) sort() {
+	sort.Slice(h.Holidays[:], func(i, j int) bool {
+		return h.Holidays[i].ID < h.Holidays[j].ID
+	})
+}
+
 // PyaSetHolidays sets the Holidays for the HKR.
 // Please see the Documentation for Holidays.
 func (h *Hkr) PyaSetHolidays(pya *PyAdapter, holidays Holidays) (err error) {
-	err = holidays.Validate()
+	data, err := h.pyaPrepare(pya)
 	if err != nil {
 		return
 	}
 
-	data, err := h.pyaPrepare(pya)
+	st := SummerTime{}.fromData(data)
+	err = holidays.Validate(st)
 	if err != nil {
 		return
 	}
@@ -1134,7 +1164,7 @@ func (h *Hkr) PyaDisableCurrentHoliday(pya *PyAdapter) (err error) {
 		return
 	}
 
-	holidays, err := parseHolidaysFromData(data)
+	holidays, err := Holidays{}.fromData(data)
 	if err != nil {
 		return
 	}
@@ -1170,7 +1200,8 @@ func (h *Hkr) PyaDisableAllHolidays(pya *PyAdapter) (err error) {
 	return
 }
 
-func parseHolidaysFromData(data url.Values) (h Holidays, err error) {
+//goland:noinspection GoMixedReceiverTypes
+func (Holidays) fromData(data url.Values) (h Holidays, err error) {
 	hTemp, ok := data["Holidaytemp"]
 
 	// Field is only present if there is at least 1 holiday set
@@ -1182,6 +1213,7 @@ func parseHolidaysFromData(data url.Values) (h Holidays, err error) {
 		h.Holidays[i-1].fromData(data, i)
 	}
 
+	h.sort()
 	return
 }
 

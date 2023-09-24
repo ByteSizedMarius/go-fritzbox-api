@@ -27,7 +27,7 @@ func DateFromYMDH(year int, month int, day int, hour int) time.Time {
 }
 
 func DoDatesOverlap(date1start, date1end, date2start, date2end time.Time) bool {
-	return date1start.Before(date2end) || date1start.Equal(date2end) &&
+	return (date1start.Before(date2end) || date1start.Equal(date2end)) &&
 		(date1end.After(date2start) || date1end.Equal(date2start))
 }
 
