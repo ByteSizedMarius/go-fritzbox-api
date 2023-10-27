@@ -1,3 +1,5 @@
+import datetime
+
 try:
     import json
     from selenium.common import TimeoutException, NoSuchElementException
@@ -6,6 +8,7 @@ try:
     from selenium.webdriver.common.by import By
     from selenium.webdriver.support.wait import WebDriverWait
     from selenium.webdriver.support import expected_conditions as ec
+    import traceback
 except (ImportError, ModuleNotFoundError) as e:
     print("Error: " + repr(e), flush=True)
     exit()
@@ -20,18 +23,25 @@ def expect_args(args, n):
     return True
 
 
+browser: webdriver.Chrome = None
+
+
 def main(inp=None):
     if inp is None:
         inp = sys.stdin
 
     debug = False
-    browser = None
+    headless = True
     driverargs = []
 
     for line in inp:
         args = line.split()
 
         match args[0].lower():
+            case "browser_debug":
+                if not expect_args(args, 1): continue
+                headless = False
+                out("OK")
             case "debug":
                 if not expect_args(args, 1): continue
                 debug = True
@@ -42,25 +52,31 @@ def main(inp=None):
                 out("OK")
             case "login":
                 if not expect_args(args, 3): continue
-                browser = login(debug, driverargs, *args[1:])
+                login(headless, debug, driverargs, *args[1:])
             case "hkr":
                 if not expect_args(args, 3): continue
-                hkr(browser, *args[1:])
+                hkr(debug, *args[1:])
             case _:
                 out("Invalid command: " + args[0])
 
 
-def login(debug, args, url, sid):
-    options = webdriver.ChromeOptions()
-    options.add_experimental_option("excludeSwitches", ["enable-logging"])
+def login(headless, debug, args, url, sid):
+    global browser
 
-    if not debug:
-        options.add_argument("--headless")
+    # start browser initially
+    if not browser:
+        options = webdriver.ChromeOptions()
+        options.add_experimental_option("excludeSwitches", ["enable-logging"])
 
-    for arg in args:
-        options.add_argument(arg)
+        if headless:
+            options.add_argument("--headless")
 
-    browser = webdriver.Chrome(options=options)
+        for arg in args:
+            options.add_argument(arg)
+
+        browser = webdriver.Chrome(options=options)
+
+    # go to the login page
     browser.get(f"{url}/?sid={sid}")
 
     try:
@@ -71,8 +87,19 @@ def login(debug, args, url, sid):
     except NoSuchElementException:
         ...
 
+    # check if we're on the homepage
+    if not expect((By.ID, "blueBarUserMenuIcon")):
+        out("Unknown Error while logging in")
+        # write source to file, so we can see where we are
+        if debug: to_html()
+        return
+
     out("OK")
-    return browser
+
+
+def to_html():
+    with open(f"source{datetime.datetime.now().microsecond}.html", "w") as f:
+        f.write(browser.page_source)
 
 
 def urljoin(url, join):
@@ -82,7 +109,7 @@ def urljoin(url, join):
         return url + "/" + join
 
 
-def expect(browser, elem):
+def expect(elem):
     try:
         WebDriverWait(browser, 5).until(ec.presence_of_element_located(elem))
         return True
@@ -90,12 +117,13 @@ def expect(browser, elem):
         return False
 
 
-def hkr(browser, url, dev_id):
+def hkr(debug, url, dev_id):
     browser.get(urljoin(url, "#sh_dev"))
 
     smarthome_table_find = (By.CLASS_NAME, "smarthome-devices")
-    if not expect(browser, smarthome_table_find):
+    if not expect(smarthome_table_find):
         out("Could not find table smarthome-devices")
+        if debug: to_html()
         return
     smarthome_table = browser.find_element(*smarthome_table_find)
 
@@ -116,7 +144,7 @@ def hkr(browser, url, dev_id):
     browser.request_interceptor = intercept_hkr
 
     edit_btn_find = (By.CLASS_NAME, "v-icon--edit")
-    if not expect(browser, edit_btn_find):
+    if not expect(edit_btn_find):
         out("Could not find table edit button")
         return
 
@@ -125,7 +153,7 @@ def hkr(browser, url, dev_id):
 
     # wait for the edit page
     form_find = (By.NAME, "mainform")
-    if not expect(browser, form_find):
+    if not expect(form_find):
         out("Could not load HKR edit page")
         return
 
@@ -160,10 +188,11 @@ if __name__ == '__main__':
         exit(0)
 
     first_inp = sys.stdin.readline()
+
     if first_inp == "OK\n":
         try:
             main()
-        except Exception as e:
-            out("Error: " + repr(e))
+        except:
+            out("Error: " + traceback.format_exc().replace("\n", "//"))
     else:
         print("Invalid OK: " + repr(first_inp))

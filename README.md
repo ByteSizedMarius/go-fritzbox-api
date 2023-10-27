@@ -22,10 +22,7 @@ I accept suggestions for any new endpoints.
 ## Compatiblity
 
 This library works with FRITZ!OS 7.56 with the 6690 Cable. The smarthome-implementations (DECT) are stable and
-compatible with all versions and routers, except for any Pya endpoints and endpoints explicitely marked as unstable.
-
-All other endpoints mostly use REST-Methods to call the same endpoints the frontend does. These endpoints are neither
-consistent across versions nor backwards-compatible. They may also break unexpectedly.
+compatible with all versions and routers, except for any Pya endpoints and endpoints explicitely marked as unstable. These endpoints are neither consistent across versions nor backwards-compatible. They may also break unexpectedly.
 
 ## Features
 
