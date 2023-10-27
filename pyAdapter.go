@@ -24,8 +24,9 @@ var adapterEmbed embed.FS
 // This Session is automatically refreshed periodically, unless RefreshSession is set to false.
 // For more Information, see the Readme (todo)
 type PyAdapter struct {
-	Client *Client
-	Debug  bool
+	Client       *Client
+	Debug        bool
+	BrowserDebug bool
 	// DriverArgs are the arguments that are passed to the chromedriver using options.add_argument().
 	DriverArgs []string
 	pyaClient  *Client
@@ -59,6 +60,12 @@ func (pya *PyAdapter) StartAdapter() error {
 
 	if pya.Debug {
 		err = pya.setDebug()
+		if err != nil {
+			return err
+		}
+	}
+	if pya.BrowserDebug {
+		err = pya.setBrowserDebug()
 		if err != nil {
 			return err
 		}
@@ -197,6 +204,16 @@ func (pya *PyAdapter) login() (err error) {
 
 func (pya *PyAdapter) setDebug() (err error) {
 	err = write(pya.writer, "DEBUG")
+	if err != nil {
+		return
+	}
+
+	err = expect(pya.reader, "OK")
+	return
+}
+
+func (pya *PyAdapter) setBrowserDebug() (err error) {
+	err = write(pya.writer, "browser_debug")
 	if err != nil {
 		return
 	}
