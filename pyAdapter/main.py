@@ -152,8 +152,10 @@ def hkr(debug, url, dev_id):
     edit_btn.find_element(By.XPATH, "../..").click()
 
     # wait for the edit page
-    form_find = (By.NAME, "mainform")
-    if not expect(form_find):
+    if not expect((By.NAME, "mainform")):
+        out("Could not load HKR edit page")
+        return
+    if not expect((By.ID, "uiTimerArea")):
         out("Could not load HKR edit page")
         return
 
