@@ -1,4 +1,5 @@
 import datetime
+import os.path
 
 try:
     import json
@@ -98,7 +99,8 @@ def login(headless, debug, args, url, sid):
 
 
 def to_html():
-    with open(f"source{datetime.datetime.now().microsecond}.html", "w") as f:
+    import tempfile
+    with open(os.path.join(tempfile.gettempdir(), f"source{datetime.datetime.now().microsecond}.html"), "w") as f:
         f.write(browser.page_source)
 
 
