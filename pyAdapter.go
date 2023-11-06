@@ -27,7 +27,7 @@ type PyAdapter struct {
 	Client       *Client
 	Debug        bool
 	BrowserDebug bool
-	// DriverArgs are the arguments that are passed to the chromedriver using options.add_argument().
+	// DriverArgs are the arguments that are passed to the chromedriver using options.add_argument()
 	DriverArgs []string
 	pyaClient  *Client
 	adapter    *exec.Cmd
@@ -39,7 +39,7 @@ type PyAdapter struct {
 const (
 	RefreshSession      = true
 	Timeout             = 2 * time.Second
-	RefreshSessionDelay = 17 * time.Minute
+	RefreshSessionDelay = 5 * time.Minute
 )
 
 // StartAdapter starts the Python Script, logs in and starts the sessionRefresher if RefreshSession is set to true.
@@ -90,7 +90,7 @@ func (pya *PyAdapter) GetArgsHKR(device Hkr) (params map[string]string, err erro
 	}
 
 	// Send Request
-	err = write(pya.writer, fmt.Sprintf("HKR %s %s", pya.pyaClient.BaseUrl, device.device.ID))
+	err = write(pya.writer, fmt.Sprintf("HKR %s", device.device.ID))
 	if err != nil {
 		return
 	}
@@ -108,7 +108,7 @@ func (pya *PyAdapter) GetArgsHKR(device Hkr) (params map[string]string, err erro
 func (pya *PyAdapter) sessionRefresher() {
 	for pya.running {
 		time.Sleep(RefreshSessionDelay)
-		err := pya.login()
+		err := pya.refresh()
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -199,6 +199,29 @@ func (pya *PyAdapter) login() (err error) {
 
 	// Wait for Response
 	err = expectWithTimeout(pya.reader, "OK", 30*time.Second)
+	if err != nil {
+		return
+	}
+
+	pya.running = true
+	return
+}
+
+func (pya *PyAdapter) refresh() (err error) {
+	// Send Refresh Command
+	err = write(pya.writer, "REFRESH")
+	if err != nil {
+		return
+	}
+
+	// Wait for Response
+	err = expectWithTimeout(pya.reader, "OK", 30*time.Second)
+
+	// If refresh wasn't successful, try to log in again
+	if err != nil {
+		err = pya.login()
+	}
+
 	return
 }
 
@@ -229,6 +252,9 @@ func readSuccess(reader *bufio.Reader, timeout time.Duration) (out string, err e
 	}
 
 	if !strings.HasPrefix(out, "SUCCESS") {
+		if strings.HasPrefix(out, "Error") {
+			out = "\n" + strings.ReplaceAll(out, "//", "\n")
+		}
 		err = fmt.Errorf("expected \"SUCCESS\", got \"%s\"", out)
 		return
 	}
@@ -241,11 +267,11 @@ func expect(reader *bufio.Reader, expected string) (err error) {
 }
 
 func expectWithTimeout(reader *bufio.Reader, expected string, timeout time.Duration) (err error) {
-	_, err = expectHelper(reader, expected, timeout, false)
+	_, err = expectHelper(reader, expected, timeout)
 	return
 }
 
-func expectHelper(reader *bufio.Reader, expected string, timeout time.Duration, keepReading bool) (out string, err error) {
+func expectHelper(reader *bufio.Reader, expected string, timeout time.Duration) (out string, err error) {
 	output, err := readWithTimeout(reader, timeout)
 	if err != nil {
 		err = fmt.Errorf("%w %w", err, fmt.Errorf("expected %s", expected))
@@ -270,10 +296,6 @@ func write(writer *bufio.Writer, msg string) error {
 		return err
 	}
 	return nil
-}
-
-func read(reader *bufio.Reader) (string, error) {
-	return readWithTimeout(reader, Timeout)
 }
 
 func readWithTimeout(reader *bufio.Reader, timeout time.Duration) (string, error) {
