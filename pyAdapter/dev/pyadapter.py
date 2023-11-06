@@ -1,9 +1,8 @@
-import traceback
 import json
 import sys
 from threading import Lock
-import os
-from datetime import datetime
+
+from util import expect_args, out, ok, to_html, urljoin
 
 try:
     from selenium.common import TimeoutException, NoSuchElementException
@@ -14,34 +13,6 @@ try:
 except (ImportError, ModuleNotFoundError) as e:
     print("Error: " + repr(e), flush=True)
     exit()
-
-
-def expect_args(args, n):
-    if len(args) != n:
-        out(f"Invalid arguments. Expected {n - 1} arguments, got {len(args) - 1}.")
-        return False
-    return True
-
-
-def out(msg):
-    print(msg, flush=True)
-
-
-def ok():
-    out("OK")
-
-
-def to_html(text):
-    import tempfile
-    with open(os.path.join(tempfile.gettempdir(), f"source{datetime.now().microsecond}.html"), "w") as f:
-        f.write(text)
-
-
-def urljoin(url, join):
-    if url.endswith("/"):
-        return url + join
-    else:
-        return url + "/" + join
 
 
 class PyAdapter:
@@ -226,22 +197,3 @@ class PyAdapter:
             return True
         except TimeoutException:
             return False
-
-
-if __name__ == '__main__':
-    out("HELO")
-
-    py = PyAdapter()
-    if len(sys.argv) > 1:
-        py.do(inp=" ".join(sys.argv[1:]).split(";"))
-        exit(0)
-
-    first_inp = sys.stdin.readline()
-    if first_inp == "OK\n":
-        # noinspection PyBroadException
-        try:
-            py.do()
-        except:
-            out("Error: " + traceback.format_exc().replace("\n", "//"))
-    else:
-        print("Invalid OK: " + repr(first_inp))
