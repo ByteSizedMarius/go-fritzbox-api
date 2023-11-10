@@ -612,6 +612,19 @@ func (h *Hkr) PyaSetZeitschaltung(pya *PyAdapter, z Zeitschaltung) (err error) {
 		return
 	}
 
+	// Timer complete seems to indicate that the hkr is enabled 24/7. Remove it here.
+	_, exists := data["timer_complete"]
+	if exists {
+		delete(data, "timer_complete")
+	}
+
+	// If there are already other timer_items set, remove them here, since we cannot be sure that all are overriden.
+	for k := range data {
+		if strings.HasPrefix(k, "timer_item_") {
+			delete(data, k)
+		}
+	}
+
 	slots := z.ToValues()
 	for k, v := range slots {
 		data[k] = util.ToUrlValue(v)
@@ -756,11 +769,11 @@ func (z *Zeitschaltung) ToValues() map[string]string {
 	var i int
 	timerItems := make(map[string]string)
 	for k, v := range startTimes {
-		timerItems[fmt.Sprintf("timer_item_%d", i*2)] = fmt.Sprintf("%s;%d;%d", k, 1, v)
+		timerItems[fmt.Sprintf("timer_item_%d", i)] = fmt.Sprintf("%s;%d;%d", k, 1, v)
 		i++
 	}
 	for k, v := range endTimes {
-		timerItems[fmt.Sprintf("timer_item_%d", i*2)] = fmt.Sprintf("%s;%d;%d", k, 0, v)
+		timerItems[fmt.Sprintf("timer_item_%d", i)] = fmt.Sprintf("%s;%d;%d", k, 0, v)
 		i++
 	}
 
