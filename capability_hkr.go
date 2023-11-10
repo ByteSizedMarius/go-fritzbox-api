@@ -887,7 +887,7 @@ func (Zeitschaltung) fromData(data url.Values) (z Zeitschaltung, err error) {
 		// Then, map the starts and ends together
 		for i, start := range v.starts {
 			if i >= len(v.ends) {
-				day.Slots = append(day.Slots, ZeitSlot{Start: start, End: time.Date(0, 0, 0, 0, 00, 0, 0, time.Local)})
+				day.Slots = append(day.Slots, ZeitSlot{Start: start, End: time.Time{}})
 				break
 			}
 
