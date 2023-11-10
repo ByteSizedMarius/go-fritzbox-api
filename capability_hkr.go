@@ -639,17 +639,7 @@ type ZeitSlot struct {
 	End   time.Time
 }
 
-// StartString returns the Start-Time of the given Slot in the Format the Fritzbox expects.
-func (zs ZeitSlot) StartString() string {
-	return zs.string(zs.Start)
-}
-
-// EndString returns the End-Time of the given Slot in the Format the Fritzbox expects.
-func (zs ZeitSlot) EndString() string {
-	return zs.string(zs.End)
-}
-
-func (zs ZeitSlot) string(t time.Time) string {
+func timeString(t time.Time) string {
 	return fmt.Sprintf("%02d%02d", t.Hour(), t.Minute())
 }
 
@@ -731,21 +721,47 @@ func (z *Zeitschaltung) Validate() error {
 //
 //goland:noinspection GoMixedReceiverTypes
 func (z *Zeitschaltung) ToValues() map[string]string {
-	var i int
+	// Group the Start-Times
+	var startTimes map[string]int
+	var endTimes map[string]int
+	startTimes = make(map[string]int)
+	endTimes = make(map[string]int)
 
-	timerItems := make(map[string]string)
 	for _, t := range z.Tage {
 		if t.Tag == 0 {
 			t.Tag = 7
 		}
-		// 1 = montag, 2 = dienstag, ..., 64 = sonntag
-		day := util.Pow(2, int(t.Tag)-1)
 
 		for _, s := range t.Slots {
-			timerItems[fmt.Sprintf("timer_item_%d", i*2)] = fmt.Sprintf("%s;%d;%d", s.StartString(), 1, day)
-			timerItems[fmt.Sprintf("timer_item_%d", i*2+1)] = fmt.Sprintf("%s;%d;%d", s.EndString(), 0, day)
-			i++
+			dayN := util.Pow(2, int(t.Tag)-1)
+
+			ts := timeString(s.Start)
+			v, ok := startTimes[ts]
+			if ok {
+				startTimes[ts] = v + dayN
+			} else {
+				startTimes[ts] = dayN
+			}
+
+			es := timeString(s.End)
+			v, ok = endTimes[es]
+			if ok {
+				endTimes[es] = v + dayN
+			} else {
+				endTimes[es] = dayN
+			}
 		}
+	}
+
+	var i int
+	timerItems := make(map[string]string)
+	for k, v := range startTimes {
+		timerItems[fmt.Sprintf("timer_item_%d", i*2)] = fmt.Sprintf("%s;%d;%d", k, 1, v)
+		i++
+	}
+	for k, v := range endTimes {
+		timerItems[fmt.Sprintf("timer_item_%d", i*2)] = fmt.Sprintf("%s;%d;%d", k, 0, v)
+		i++
 	}
 
 	return timerItems
@@ -892,6 +908,9 @@ func (Zeitschaltung) fromData(data url.Values) (z Zeitschaltung, err error) {
 			}
 
 			day.Slots = append(day.Slots, ZeitSlot{Start: start, End: v.ends[i]})
+		}
+		if len(v.starts) < len(v.ends) {
+			day.Slots = append(day.Slots, ZeitSlot{Start: time.Time{}, End: v.ends[len(v.ends)-1]})
 		}
 
 		z.Tage = append(z.Tage, day)
