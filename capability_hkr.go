@@ -805,9 +805,6 @@ func (z Zeitschaltung) String() string {
 //
 //goland:noinspection GoMixedReceiverTypes
 func (Zeitschaltung) fromData(data url.Values) (z Zeitschaltung, err error) {
-	// keep track of the days
-	days := map[time.Weekday][]ZeitSlot{}
-
 	relevantDataItems := url.Values{}
 	for k, v := range data {
 		if strings.HasPrefix(k, "timer_item_") {
@@ -815,21 +812,14 @@ func (Zeitschaltung) fromData(data url.Values) (z Zeitschaltung, err error) {
 		}
 	}
 
-	// sort keys of relevant data items by their number
-	keys := make([]string, 0, len(relevantDataItems))
-	for k := range relevantDataItems {
-		keys = append(keys, k)
+	type dayRes struct {
+		starts []time.Time
+		ends   []time.Time
 	}
+	var res map[time.Weekday]dayRes
+	res = make(map[time.Weekday]dayRes)
 
-	sort.Slice(keys, func(i, j int) bool {
-		iN, _ := strconv.Atoi(strings.TrimPrefix(keys[i], "timer_item_"))
-		jN, _ := strconv.Atoi(strings.TrimPrefix(keys[j], "timer_item_"))
-		return iN < jN
-	})
-
-	for _, k := range keys {
-		v := relevantDataItems[k]
-
+	for _, v := range relevantDataItems {
 		// split the timer item into its values
 		values := strings.Split(v[0], ";")
 
@@ -842,74 +832,69 @@ func (Zeitschaltung) fromData(data url.Values) (z Zeitschaltung, err error) {
 
 		// iterate over the binary representation
 		for i, c := range util.Reverse(strings.ReplaceAll(fmt.Sprintf("%8s", strconv.FormatInt(int64(appliesTo), 2)), " ", "0")) {
-			if c == '1' {
-				// the first value is the time
-				var t time.Time
-				t, err = time.Parse("1504", values[0])
-				if err != nil {
-					return
-				}
 
-				wDay := i + 1
-				if wDay == 7 {
-					wDay = 0
-				}
-
-				// the second value is the type (0 = end, 1 = start)
-				day := days[time.Weekday(wDay)]
-
-				// if the value is one, search the item, where the start is not set yet
-				if values[1] == "1" {
-					found := false
-
-					// either an existing item without start
-					for ind, s := range day {
-						if s.Start.IsZero() {
-							day[ind].Start = t
-							found = true
-							break
-						}
-					}
-
-					// or, if not found, a new item
-					if !found {
-						day = append(day, ZeitSlot{Start: t})
-					}
-				} else
-				// Value is 0, so it's an end
-				{
-
-					// If the first Item of the day is an end, it's not valid
-					// This is due to a bug the fritzbox has, where, if you have XXX - 0:00 on Monday,
-					// the end will be applied to both, the end of monday (23:59) and the beginning of tuesday (0:00) aswell.
-					// todo: check if fixed in newer versions (09.09.23)
-					if len(day) == 0 {
-						continue
-					}
-
-					found := false
-					// Same as above, but it seems, that the end always comes after the start, so we only need to find the first item without an end
-					for ind, s := range day {
-						if s.End.IsZero() {
-							day[ind].End = t
-							found = true
-							break
-						}
-					}
-
-					if !found {
-						day = append(day, ZeitSlot{End: t})
-					}
-				}
-
-				days[time.Weekday(wDay)] = day
+			// if the bit is 0, the timer item does not apply to the day
+			// skip
+			if c == '0' {
+				continue
 			}
+
+			// the first value is the time, parse it
+			var t time.Time
+			t, err = time.Parse("1504", values[0])
+			if err != nil {
+				return
+			}
+
+			// go weekdays are 0: Sunday, but the fritzbox uses 0: Monday
+			// correct this
+			wDay := time.Weekday(i + 1)
+			if wDay == 7 {
+				wDay = time.Weekday(0)
+			}
+
+			// Get the result's day
+			day := res[wDay]
+
+			// the second value is the type (0 = end, 1 = start)
+			// if the value is one, search the item, where the start is not set yet
+			if values[1] == "1" {
+				day.starts = append(day.starts, t)
+			} else
+			// Value is 0, so it's an end
+			{
+				day.ends = append(day.ends, t)
+			}
+
+			res[wDay] = day
 		}
 	}
 
-	z.Tage = make([]Tag, 0, len(days))
-	for k, v := range days {
-		z.Tage = append(z.Tage, Tag{Tag: k, Slots: v})
+	// We now potentially have multiple starts and ends for each day
+	// Map these together now by mapping the first start to the first end, the second start to the second end, etc.
+	for k, v := range res {
+		var day Tag
+		day.Tag = k
+
+		// First, sort both lists by time
+		sort.Slice(v.starts, func(i, j int) bool {
+			return v.starts[i].Before(v.starts[j])
+		})
+		sort.Slice(v.ends, func(i, j int) bool {
+			return v.ends[i].Before(v.ends[j])
+		})
+
+		// Then, map the starts and ends together
+		for i, start := range v.starts {
+			if i >= len(v.ends) {
+				day.Slots = append(day.Slots, ZeitSlot{Start: start, End: time.Date(0, 0, 0, 0, 00, 0, 0, time.Local)})
+				break
+			}
+
+			day.Slots = append(day.Slots, ZeitSlot{Start: start, End: v.ends[i]})
+		}
+
+		z.Tage = append(z.Tage, day)
 	}
 
 	return
