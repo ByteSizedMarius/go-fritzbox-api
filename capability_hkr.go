@@ -869,6 +869,20 @@ func (Zeitschaltung) fromData(data url.Values) (z Zeitschaltung, err error) {
 				wDay = time.Weekday(0)
 			}
 
+			// TODO: HOTFIX (logic error)
+			// Basically, what happens is that when 00:00 is put into the form, the fritzbox interprets it as 24:00
+			// and puts it into the next day, while I currently interpret it as 23:59 of the same day
+			// what I'm doing here is checking if the time is 00:00 and the value is 0 (meaning it's an end)
+			// and then putting it into the previous day
+			// maybe if its a start it should be put into the next day, but I'm not sure
+			// also todo: investigate how the tovalues handles this
+			if timeString(t) == "0000" && values[1] == "0" {
+				wDay -= 1
+				if wDay == -1 {
+					wDay = time.Weekday(6)
+				}
+			}
+
 			// Get the result's day
 			day := res[wDay]
 
