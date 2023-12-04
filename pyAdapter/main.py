@@ -33,7 +33,7 @@ def ok():
 
 def to_html(text):
     import tempfile
-    with open(os.path.join(tempfile.gettempdir(), f"source{datetime.now().microsecond}.html"), "w") as f:
+    with open(os.path.join(tempfile.gettempdir(), f"source{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"), "w") as f:
         f.write(text)
 
 
@@ -115,12 +115,12 @@ class PyAdapter:
 
         if self.on_login_page():
             out("Invalid sid")
-            exit(0)
+            if self.debug: to_html(self.browser.page_source)
+            return
 
         # check if we're on the homepage
         if not self.expect((By.ID, "blueBarUserMenuIcon")):
             out("Unknown Error while logging in")
-            # write source to file, so we can see where we are
             if self.debug: to_html(self.browser.page_source)
             return
 

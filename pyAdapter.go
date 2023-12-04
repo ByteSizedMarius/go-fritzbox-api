@@ -38,7 +38,7 @@ type PyAdapter struct {
 
 const (
 	RefreshSession      = true
-	Timeout             = 2 * time.Second
+	Timeout             = 10 * time.Second
 	RefreshSessionDelay = 5 * time.Minute
 )
 
@@ -219,7 +219,12 @@ func (pya *PyAdapter) refresh() (err error) {
 
 	// If refresh wasn't successful, try to log in again
 	if err != nil {
+		fmt.Println(err)
+
 		err = pya.login()
+		if err != nil {
+			err = errors.Join(err, fmt.Errorf("refresh failed on login"))
+		}
 	}
 
 	return
