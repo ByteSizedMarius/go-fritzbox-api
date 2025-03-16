@@ -1,5 +1,7 @@
 # go fritzbox api
 
+Please note: this is pretty unstable, currently working on/off on a v2.
+
 Quick & dirty API implementation for the AVM FRITZ!Box using Golang and REST.
 
 **Warning:** There is no official API for some of these functions (except
