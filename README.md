@@ -37,12 +37,18 @@ func main() {
 }
 ```
 
+## API Landscape
+
+FRITZ!Box has two official smart home APIs:
+- **AHA HTTP Interface** (`/webservices/homeautoswitch.lua`): XML-based, available since FRITZ!OS 5.53; [Docs](https://avm.de/fileadmin/user_upload/Global/Service/Schnittstellen/AHA-HTTP-Interface.pdf)
+- **Smart Home REST API** (`/api/v0/smarthome/...`): JSON-based, requires FRITZ!OS 8.20+. More comprehensive; [OpenAPI spec](https://fritz.support/resources/SmarthomeRestApiFRITZOS82.yaml)
+
 ## Packages
 
 | Package | API | Stability | Description |
 |---------|-----|-----------|-------------|
-| [`aha/`](aha/) | AHA HTTP | Stable | Smart home (DECT devices, thermostats) |
-| [`smarthome/`](smarthome/) | REST | Stable | Full config, JSON-based (FRITZ!OS 8.20+) |
+| [`smarthome/`](smarthome/) | REST | Stable | Smart home (API supports full read/write) (FRITZ!OS 8.20+) |
+| [`aha/`](aha/) | AHA HTTP | Stable | Smart home (API supports full read, some write) |
 | [`unsafe/`](unsafe/) | data.lua | Unstable | Router internals, network devices |
 
 ## Scope
@@ -50,12 +56,6 @@ func main() {
 Only a subset of device types is implemented for both APIs. Main focus is on **HKR (radiator thermostats)** - see [HKR Documentation](docs/hkr.md) for details. Other device types (buttons, temperature sensors, HAN-FUN) have partial support.
 
 See the package READMEs linked above for detailed usage and available functions.
-
-## API Landscape
-
-FRITZ!Box has two official smart home APIs:
-- **AHA HTTP Interface** (`/webservices/homeautoswitch.lua`): XML-based, available since FRITZ!OS 5.53; [Docs](https://avm.de/fileadmin/user_upload/Global/Service/Schnittstellen/AHA-HTTP-Interface.pdf)
-- **Smart Home REST API** (`/api/v0/smarthome/...`): JSON-based, requires FRITZ!OS 8.20+. More comprehensive; [OpenAPI spec](https://fritz.support/resources/SmarthomeRestApiFRITZOS82.yaml)
 
 ## Compatibility
 
