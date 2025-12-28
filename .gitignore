@@ -1,6 +1,2 @@
-/pyAdapter/.idea/
-/.idea/
-examples/main_private.go
-examples/credentials
-*.exe
-*.pyc
+tests/*/config.json
+/.idea
