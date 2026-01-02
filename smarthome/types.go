@@ -55,6 +55,20 @@ type SmarthomeTrigger struct {
 	Active bool   `json:"active"`
 }
 
+// WindowUnit is the unit response for an open window detector
+type WindowOpenCloseDetectorUnit struct {
+	UID        string `json:"UID"`
+	Name       string `json:"name"`
+	UnitType   string `json:"unitType"`
+	Interfaces struct {
+		AlertInterface struct {
+			Alerts                    []string `json:"alerts"`
+			LastAlertTime             int      `json:"lastAlertTime"`
+			ThermostatDestinationUids []string `json:"thermostatDestinationUids"`
+		} `json:"alertInterface"`
+	} `json:"interfaces"`
+}
+
 // ThermostatUnit is the full unit response from GET /configuration/units/{UID}
 type ThermostatUnit struct {
 	UID        string               `json:"UID"`
