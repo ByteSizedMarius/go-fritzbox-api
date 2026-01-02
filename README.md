@@ -4,7 +4,8 @@ Go client library for AVM FRITZ!Box routers and smart home devices.
 
 ## Attribution
 
-Authentication based on [Philipp Franke](https://github.com/philippfranke)'s [go-fritzbox](https://github.com/philippfranke/go-fritzbox).
+- Authentication based on [Philipp Franke](https://github.com/philippfranke)'s [go-fritzbox](https://github.com/philippfranke/go-fritzbox)
+- Window detector support based on contribution by [@btwotch](https://github.com/ByteSizedMarius/go-fritzbox-api/pull/1)
 
 ## Installation
 
@@ -19,8 +20,8 @@ package main
 
 import (
     "fmt"
-    fritzbox "github.com/ByteSizedMarius/go-fritzbox-api"
-    "github.com/ByteSizedMarius/go-fritzbox-api/smarthome"
+    "github.com/ByteSizedMarius/go-fritzbox-api"
+    "github.com/ByteSizedMarius/go-fritzbox-api/smart"
 )
 
 func main() {
@@ -28,14 +29,30 @@ func main() {
     if err := client.Connect(); err != nil {
         panic(err)
     }
-    defer client.Close()
 
-    overview, _ := smarthome.GetOverview(client)
-    for _, device := range overview.Devices {
-        fmt.Printf("%s (%s)\n", device.Name, device.ProductName)
+    thermostats, _ := smart.GetAllThermostats(client)
+    for _, t := range thermostats {
+        fmt.Printf("%s: %.1f°C\n", t.Name, t.CurrentTemp)
     }
 }
 ```
+
+## Packages
+
+| Package | API | Description |
+|---------|-----|-------------|
+| [`rest/`](rest/) | REST | JSON API, generated types (FRITZ!OS 8.20+) |
+| [`smart/`](smart/) | REST | Wrapper for `rest/` with nicer API for selected functionality |
+| [`unsafe/`](unsafe/) | data.lua | Router internals (unstable) |
+| [`aha/`](aha/) | AHA HTTP | (Legacy) XML API for DECT devices |
+
+## Scope
+
+Supported device types:
+- **Thermostats** - full support (state, config, schedules, holidays)
+- **Buttons** - partial support
+- **Window detectors** - state and thermostat linking
+- **Temperature sensors** - read-only
 
 ## API Landscape
 
@@ -43,23 +60,11 @@ FRITZ!Box has two official smart home APIs:
 - **AHA HTTP Interface** (`/webservices/homeautoswitch.lua`): XML-based, available since FRITZ!OS 5.53; [Docs](https://avm.de/fileadmin/user_upload/Global/Service/Schnittstellen/AHA-HTTP-Interface.pdf)
 - **Smart Home REST API** (`/api/v0/smarthome/...`): JSON-based, requires FRITZ!OS 8.20+. More comprehensive; [OpenAPI spec](https://fritz.support/resources/SmarthomeRestApiFRITZOS82.yaml)
 
-## Packages
-
-| Package | API | Stability | Description |
-|---------|-----|-----------|-------------|
-| [`smarthome/`](smarthome/) | REST | Stable | Smart home (API supports full read/write) (FRITZ!OS 8.20+) |
-| [`aha/`](aha/) | AHA HTTP | Stable | Smart home (API supports full read, some write) |
-| [`unsafe/`](unsafe/) | data.lua | Unstable | Router internals, network devices |
-
-## Scope
-
-Only a subset of device types is implemented for both APIs. Main focus is on **HKR (radiator thermostats)** - see [HKR Documentation](docs/hkr.md) for details. Other device types (buttons, temperature sensors, HAN-FUN) have partial support.
-
-See the package READMEs linked above for detailed usage and available functions.
-
 ## Compatibility
 
 Tested with FRITZ!OS 8.21 on the 6690 Cable. Smart home implementations (DECT) are stable across versions and routers. Endpoints in the `unsafe/` package may break between firmware versions.
+
+Breaking changes are possible but will always be released with a new major version tag (v1.0 → v2.0, etc).
 
 ## Contributing
 
