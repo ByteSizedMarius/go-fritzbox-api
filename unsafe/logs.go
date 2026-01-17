@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ByteSizedMarius/go-fritzbox-api"
+	"github.com/ByteSizedMarius/go-fritzbox-api/v2"
 )
 
 // LogDateFormat is the date/time format used by the Fritz!Box event log.

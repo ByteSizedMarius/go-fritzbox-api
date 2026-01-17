@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ByteSizedMarius/go-fritzbox-api"
+	"github.com/ByteSizedMarius/go-fritzbox-api/v2"
 )
 
 // Device is the main type for aha-devices. It holds the values all devices have;

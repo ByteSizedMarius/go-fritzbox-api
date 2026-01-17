@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/ByteSizedMarius/go-fritzbox-api"
+	"github.com/ByteSizedMarius/go-fritzbox-api/v2"
 )
 
 // SetName sets the friendly name of a device.

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/ByteSizedMarius/go-fritzbox-api"
+	"github.com/ByteSizedMarius/go-fritzbox-api/v2"
 )
 
 const bytesPerMB = 1_000_000

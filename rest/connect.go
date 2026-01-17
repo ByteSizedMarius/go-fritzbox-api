@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/ByteSizedMarius/go-fritzbox-api"
+	"github.com/ByteSizedMarius/go-fritzbox-api/v2"
 )
 
 const (

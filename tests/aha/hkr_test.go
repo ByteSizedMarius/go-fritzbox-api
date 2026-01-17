@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ByteSizedMarius/go-fritzbox-api/aha"
+	"github.com/ByteSizedMarius/go-fritzbox-api/v2/aha"
 )
 
 func TestHKR(t *testing.T) {

@@ -13,8 +13,8 @@ Internal Lua endpoints (`data.lua`, `query.lua`)
 
 ```go
 import (
-    "github.com/ByteSizedMarius/go-fritzbox-api"
-    "github.com/ByteSizedMarius/go-fritzbox-api/unsafe"
+    "github.com/ByteSizedMarius/go-fritzbox-api/v2"
+    "github.com/ByteSizedMarius/go-fritzbox-api/v2/unsafe"
 )
 
 client := fritzbox.New("username", "password")

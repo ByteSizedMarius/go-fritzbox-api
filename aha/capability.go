@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/ByteSizedMarius/go-fritzbox-api"
+	"github.com/ByteSizedMarius/go-fritzbox-api/v2"
 )
 
 var maskTranslation = []string{CHanfun, "", CLicht, "", CAlarm, CButton, CHKR, CEnergieMesser, CTempSensor, CSteckdose, CRepeater, CMikrofon, "", CHanfunUnit, "", CSchaltbar, CDimmbar, CLampeMitFarbtemp, CRollladen}

@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	fritzbox "github.com/ByteSizedMarius/go-fritzbox-api"
-	"github.com/ByteSizedMarius/go-fritzbox-api/smart"
+	fritzbox "github.com/ByteSizedMarius/go-fritzbox-api/v2"
+	"github.com/ByteSizedMarius/go-fritzbox-api/v2/smart"
 )
 
 func main() {

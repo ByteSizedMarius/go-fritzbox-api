@@ -10,7 +10,7 @@ Go client library for AVM FRITZ!Box routers and smart home devices.
 ## Installation
 
 ```bash
-go get github.com/ByteSizedMarius/go-fritzbox-api
+go get github.com/ByteSizedMarius/go-fritzbox-api/v2
 ```
 
 ## Quick Start
@@ -20,8 +20,8 @@ package main
 
 import (
     "fmt"
-    "github.com/ByteSizedMarius/go-fritzbox-api"
-    "github.com/ByteSizedMarius/go-fritzbox-api/smart"
+    "github.com/ByteSizedMarius/go-fritzbox-api/v2"
+    "github.com/ByteSizedMarius/go-fritzbox-api/v2/smart"
 )
 
 func main() {
@@ -40,7 +40,7 @@ func main() {
 Or run the [example CLI](smart/examples/thermostat/) directly:
 
 ```bash
-go run github.com/ByteSizedMarius/go-fritzbox-api/smart/examples/thermostat@latest -user=admin -pass=secret
+go run github.com/ByteSizedMarius/go-fritzbox-api/v2/smart/examples/thermostat@latest -user=admin -pass=secret
 ```
 
 See [smart/README.md](smart/README.md) for the full API, [examples](smart/examples/), and [thermostat concepts](docs/hkr.md).

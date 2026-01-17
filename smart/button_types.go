@@ -3,8 +3,8 @@ package smart
 import (
 	"time"
 
-	"github.com/ByteSizedMarius/go-fritzbox-api"
-	"github.com/ByteSizedMarius/go-fritzbox-api/rest"
+	"github.com/ByteSizedMarius/go-fritzbox-api/v2"
+	"github.com/ByteSizedMarius/go-fritzbox-api/v2/rest"
 )
 
 // Button represents a FRITZ!Box button with clean Go types.

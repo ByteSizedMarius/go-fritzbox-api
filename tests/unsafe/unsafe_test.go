@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ByteSizedMarius/go-fritzbox-api"
-	"github.com/ByteSizedMarius/go-fritzbox-api/unsafe"
+	"github.com/ByteSizedMarius/go-fritzbox-api/v2"
+	"github.com/ByteSizedMarius/go-fritzbox-api/v2/unsafe"
 )
 
 var testCfg struct {

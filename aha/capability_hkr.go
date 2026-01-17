@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ByteSizedMarius/go-fritzbox-api"
+	"github.com/ByteSizedMarius/go-fritzbox-api/v2"
 )
 
 // Hkr is the struct for HeizungsKörperRegler. Note: current temperature can be accessed via the temperature-capability.

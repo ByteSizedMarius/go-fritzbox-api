@@ -4,7 +4,7 @@ package smart
 import (
 	"reflect"
 
-	"github.com/ByteSizedMarius/go-fritzbox-api/rest"
+	"github.com/ByteSizedMarius/go-fritzbox-api/v2/rest"
 )
 
 // GetInterface returns the interface of type I from the unit's interfaces.

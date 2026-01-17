@@ -3,7 +3,7 @@ package aha
 import (
 	"testing"
 
-	"github.com/ByteSizedMarius/go-fritzbox-api/aha"
+	"github.com/ByteSizedMarius/go-fritzbox-api/v2/aha"
 )
 
 func TestHanFun(t *testing.T) {

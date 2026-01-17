@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ByteSizedMarius/go-fritzbox-api"
+	"github.com/ByteSizedMarius/go-fritzbox-api/v2"
 )
 
 // ButtonDevice is the capability for a button

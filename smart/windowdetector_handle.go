@@ -6,7 +6,7 @@ package smart
 import (
 	"fmt"
 
-	"github.com/ByteSizedMarius/go-fritzbox-api/rest"
+	"github.com/ByteSizedMarius/go-fritzbox-api/v2/rest"
 )
 
 // WindowDetectorConfig contains configuration data from the configuration endpoint.

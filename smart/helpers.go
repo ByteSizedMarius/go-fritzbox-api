@@ -1,6 +1,6 @@
 package smart
 
-import "github.com/ByteSizedMarius/go-fritzbox-api/rest"
+import "github.com/ByteSizedMarius/go-fritzbox-api/v2/rest"
 
 // findDevice finds a device by UID in the overview devices list.
 func findDevice(devices []rest.HelperOverviewDevice, uid string) *rest.HelperOverviewDevice {

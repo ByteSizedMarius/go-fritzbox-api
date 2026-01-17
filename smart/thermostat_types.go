@@ -4,8 +4,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ByteSizedMarius/go-fritzbox-api"
-	"github.com/ByteSizedMarius/go-fritzbox-api/rest"
+	"github.com/ByteSizedMarius/go-fritzbox-api/v2"
+	"github.com/ByteSizedMarius/go-fritzbox-api/v2/rest"
 )
 
 // ErrNotFound is returned when a device is not found by UID/AIN.

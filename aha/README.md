@@ -13,8 +13,8 @@ AHA HTTP Interface (`/webservices/homeautoswitch.lua`)
 
 ```go
 import (
-    "github.com/ByteSizedMarius/go-fritzbox-api"
-    "github.com/ByteSizedMarius/go-fritzbox-api/aha"
+    "github.com/ByteSizedMarius/go-fritzbox-api/v2"
+    "github.com/ByteSizedMarius/go-fritzbox-api/v2/aha"
 )
 
 client := fritzbox.New("username", "password")

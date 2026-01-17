@@ -6,8 +6,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ByteSizedMarius/go-fritzbox-api"
-	"github.com/ByteSizedMarius/go-fritzbox-api/aha"
+	"github.com/ByteSizedMarius/go-fritzbox-api/v2"
+	"github.com/ByteSizedMarius/go-fritzbox-api/v2/aha"
 )
 
 var testCfg struct {

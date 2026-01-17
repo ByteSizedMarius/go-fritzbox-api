@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ByteSizedMarius/go-fritzbox-api/rest"
+	"github.com/ByteSizedMarius/go-fritzbox-api/v2/rest"
 )
 
 // Get fetches the current button state from the overview endpoint.

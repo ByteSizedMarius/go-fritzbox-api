@@ -1,4 +1,4 @@
-module github.com/ByteSizedMarius/go-fritzbox-api
+module github.com/ByteSizedMarius/go-fritzbox-api/v2
 
 go 1.21
 
