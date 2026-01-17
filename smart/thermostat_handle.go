@@ -181,8 +181,8 @@ func (h *ThermostatHandle) DeactivateWindowOpen() error {
 	return rest.PutOverviewUnit(h.client, h.uid, data)
 }
 
-// SetComfortTemperature sets the "comfort" preset temperature.
-func (h *ThermostatHandle) SetComfortTemperature(celsius float64) error {
+// SetComfortPreset sets the "comfort" preset temperature value used by the weekly timer.
+func (h *ThermostatHandle) SetComfortPreset(celsius float64) error {
 	cel := float32(celsius)
 	data := &rest.EndpointConfigurationPutUnit{
 		Interfaces: &rest.IFUnitInterfacesConfig{
@@ -197,8 +197,8 @@ func (h *ThermostatHandle) SetComfortTemperature(celsius float64) error {
 	return rest.PutConfigurationUnitByUID(h.client, h.uid, data)
 }
 
-// SetReducedTemperature sets the "reduced" preset temperature.
-func (h *ThermostatHandle) SetReducedTemperature(celsius float64) error {
+// SetReducedPreset sets the "reduced" preset temperature value used by the weekly timer.
+func (h *ThermostatHandle) SetReducedPreset(celsius float64) error {
 	cel := float32(celsius)
 	data := &rest.EndpointConfigurationPutUnit{
 		Interfaces: &rest.IFUnitInterfacesConfig{
@@ -211,6 +211,24 @@ func (h *ThermostatHandle) SetReducedTemperature(celsius float64) error {
 		},
 	}
 	return rest.PutConfigurationUnitByUID(h.client, h.uid, data)
+}
+
+// ApplyComfortPreset sets the target temperature to the configured comfort preset value.
+func (h *ThermostatHandle) ApplyComfortPreset() error {
+	therm, err := h.Get()
+	if err != nil {
+		return fmt.Errorf("get thermostat state: %w", err)
+	}
+	return h.SetTargetTemperature(therm.ComfortTemp)
+}
+
+// ApplyReducedPreset sets the target temperature to the configured reduced preset value.
+func (h *ThermostatHandle) ApplyReducedPreset() error {
+	therm, err := h.Get()
+	if err != nil {
+		return fmt.Errorf("get thermostat state: %w", err)
+	}
+	return h.SetTargetTemperature(therm.ReducedTemp)
 }
 
 // SetTemperatureOffset sets the temperature sensor offset (-10 to +10°C).

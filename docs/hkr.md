@@ -4,21 +4,9 @@ FRITZ!Box smart radiator thermostats for automated heating control.
 
 **Supported devices:** FRITZ!DECT 301, FRITZ!DECT 302, Eurotronic COMET DECT
 
-**Packages:** The `smart` package provides a high-level API for common operations. For advanced features, use the `rest` package directly with generated types.
+**Packages:** The `smart` package provides a high-level API for common operations. For advanced features, use the `rest` package directly with generated types. Please open an issue for common use cases that should be added as helpers to `smart`.
 
-## Quick Start
-
-```go
-// Get all thermostats
-thermostats, _ := smart.GetAllThermostats(client)
-for _, t := range thermostats {
-    fmt.Printf("%s: %.1f°C (target: %.1f°C)\n", t.Name, t.CurrentTemp, t.TargetTemp)
-}
-
-// Control a specific thermostat
-handle := smart.NewThermostatHandle(client, uid)
-handle.SetTargetTemperature(21.5)
-```
+**See also:** [smart/README.md](../smart/README.md) for API reference, [examples/](../smart/examples/) for code
 
 ## Temperature Management
 
@@ -30,20 +18,6 @@ The current heating target. Range: 8.0-28.0°C in 0.5°C steps.
 - `OFF` - Heating disabled, shows snowflake on device
 - `MAX` - Maximum heating
 
-```go
-// AHA API
-hkr.DECTGetSoll(client)           // Fetch current target
-hkr.DECTSetSoll(client, 21.5)     // Set target (accepts float, int, string)
-hkr.DECTSetSollOff(client)        // Turn off
-hkr.DECTSetSollMax(client)        // Set to max
-
-// smart package
-handle := smart.NewThermostatHandle(client, uid)
-handle.SetTargetTemperature(21.5)
-handle.TurnOff()
-handle.TurnOn()  // max heating
-```
-
 ### Comfort & Reduced Presets
 
 The weekly timer alternates between two temperature presets:
@@ -51,120 +25,30 @@ The weekly timer alternates between two temperature presets:
 - **Comfort (Komfort)** - "Heating on" temperature
 - **Reduced (Absenk)** - "Economy" temperature
 
-```go
-// AHA API (read only)
-hkr.DECTGetKomfort(client)  // Fetch comfort temperature
-hkr.DECTGetAbsenk(client)   // Fetch reduced temperature
-
-// smart package
-t, _ := smart.GetThermostat(client, uid)
-t.ComfortTemp   // Read comfort temp
-t.ReducedTemp   // Read reduced temp
-
-handle := smart.NewThermostatHandle(client, uid)
-handle.SetComfortTemperature(22.0)
-handle.SetReducedTemperature(17.0)
-```
-
 ## Operating Modes
 
 ### Boost Mode
 
 Rapidly heats the radiator for a set duration (max 24 hours), then reverts to schedule.
 
-```go
-// AHA API
-hkr.IsBoostActive()                        // Check status (local)
-hkr.GetBoostEndtime()                      // Get end time (local)
-hkr.SetBoost(client, 30*time.Minute)       // Activate for 30 min
-hkr.DECTDeactivateBoost(client)            // Turn off
-
-// smart package
-t, _ := smart.GetThermostat(client, uid)
-t.Boost.Active    // Check status
-t.Boost.EndTime   // Get end time
-
-handle := smart.NewThermostatHandle(client, uid)
-handle.SetBoost(30)           // Activate (minutes)
-handle.DeactivateBoost()      // Turn off
-```
-
 ### Window Open Detection
 
-Reduces heating when a window is detected open. Can be triggered automatically (via internal sensor) or manually via API.
-
-```go
-// AHA API
-hkr.IsWindowOpen()                              // Check status (local)
-hkr.GetWindowOpenEndtime()                      // Get end time (local)
-hkr.DECTSetWindowOpen(client, 15*time.Minute)   // Simulate open
-hkr.DECTDeactivateWindowOpen(client)            // Clear
-
-// smart package
-t, _ := smart.GetThermostat(client, uid)
-t.WindowOpen.Active    // Check status
-t.WindowOpen.EndTime   // Get end time
-
-handle := smart.NewThermostatHandle(client, uid)
-handle.SetWindowOpen(15)                           // Simulate open (minutes)
-handle.DeactivateWindowOpen()                      // Clear
-handle.SetWindowOpenDetection(duration, "medium")  // Configure (sensitivity: low/medium/high)
-```
+Reduces heating when a window is detected open. Can be triggered automatically (via internal sensor) or manually via API. Sensitivity can be configured to low, medium, or high.
 
 ### Summer Mode
 
 Disables heating during warm months. When active, the device is automatically locked.
 
-```go
-// AHA API
-hkr.IsSummerActive()  // Check status (local)
-
-// smart package
-t, _ := smart.GetThermostat(client, uid)
-t.IsSummerActive  // Check status
-
-handle := smart.NewThermostatHandle(client, uid)
-cfg, _ := handle.GetConfig()
-cfg.SummerPeriod  // Get period config
-
-handle.SetSummerPeriod(true, 5, 1, 9, 30)  // Enable: May 1 - Sep 30
-```
-
 ### Holiday Mode
 
 Sets a fixed temperature during vacation periods. Multiple periods can be configured. Device is automatically locked during holidays.
-
-```go
-// AHA API
-hkr.IsHolidayActive()  // Check status (local)
-
-// smart package
-t, _ := smart.GetThermostat(client, uid)
-t.IsHolidayActive  // Check status
-
-handle := smart.NewThermostatHandle(client, uid)
-cfg, _ := handle.GetConfig()
-cfg.HolidayPeriods  // Get configured periods
-
-handle.AddHoliday(startTime, endTime, 18.0)
-handle.RemoveHoliday(0)  // by index
-handle.ClearHolidays()
-```
 
 ## Timer Schedule
 
 Weekly schedule that switches between comfort and reduced temperatures.
 
-- AHA API only shows the next scheduled change (`GetNextChangeTemperature()`, `GetNextchangeEndtime()`)
-- `smart` package provides full schedule configuration via `SetWeeklyTimer()`
-
-```go
-handle := smart.NewThermostatHandle(client, uid)
-cfg, _ := handle.GetConfig()
-cfg.WeeklySchedule  // []ScheduleEntry with Time and TemperaturePreset
-
-handle.SetWeeklyTimer(entries)  // Set full schedule
-```
+- AHA API only shows the next scheduled change
+- `smart` package provides full schedule configuration
 
 ## Device Locks
 
@@ -175,38 +59,11 @@ handle.SetWeeklyTimer(entries)  // Set full schedule
 
 Locks are automatically enabled during summer and holiday modes.
 
-```go
-// AHA API
-hkr.Lock        // API lock status (local)
-hkr.Devicelock  // Local lock status (local)
-
-// smart package
-t, _ := smart.GetThermostat(client, uid)
-t.IsLocked  // Local lock status
-
-handle := smart.NewThermostatHandle(client, uid)
-handle.SetLocks(localLock, apiLock)
-```
-
 ## Battery
 
-```go
-// AHA API
-hkr.IsBatteryLow()  // true if low
-hkr.Battery         // percentage as string
+Thermostats report battery level (0-100%) and a low battery warning flag.
 
-// smart package
-t, _ := smart.GetThermostat(client, uid)
-t.IsBatteryLow   // true if low
-t.BatteryLevel   // percentage as int
-```
-
-## Error Codes (AHA only)
-
-```go
-hkr.Errorcode        // raw code
-hkr.GetErrorString() // human-readable message
-```
+## Error Codes
 
 | Code | Meaning |
 |------|---------|
@@ -220,35 +77,7 @@ hkr.GetErrorString() // human-readable message
 
 ## Temperature Sensors
 
-The current room temperature reading:
-
-```go
-// AHA API (via Temperature capability, not HKR)
-if device.HasCapability(aha.CTempSensor) {
-    temp := aha.GetCapability[*aha.Temperature](device)
-    celsius := temp.GetCelsiusNumeric()
-}
-
-// smart package
-t, _ := smart.GetThermostat(client, uid)
-t.CurrentTemp  // Current temperature in °C
-
-handle := smart.NewThermostatHandle(client, uid)
-handle.SetTemperatureOffset(1.5)  // Calibration offset (-10 to +10°C)
-
-// External sensor assignment (via rest package)
-data := &rest.EndpointConfigurationPutUnit{
-    Interfaces: &rest.IFUnitInterfacesConfig{
-        ThermostatInterface: &rest.IFThermostatConfig{
-            TemperatureOffset: &rest.HelperTemperatureOffset{
-                ExternalSensorUid: &sensorUID,
-                SensorMode:        rest.HelperTemperatureOffsetSensorModeExternal,
-            },
-        },
-    },
-}
-rest.PutConfigurationUnitByUID(client, uid, data)
-```
+Thermostats have a built-in temperature sensor. An external sensor can be assigned via the REST API for more accurate room temperature readings. A calibration offset (-10 to +10°C) can be configured.
 
 ## API Comparison
 
