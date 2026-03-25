@@ -77,7 +77,6 @@ func showDetails(client *fritzbox.Client, uid string) {
 	fmt.Printf("  Target:      %.1f°C\n", t.TargetTemp)
 	fmt.Printf("  Comfort:     %.1f°C\n", t.ComfortTemp)
 	fmt.Printf("  Reduced:     %.1f°C\n", t.ReducedTemp)
-	fmt.Printf("  Offset:      %.1f°C\n", t.TempOffset)
 
 	fmt.Println("\nStatus:")
 	fmt.Printf("  Boost:       %v", t.Boost.Active)
@@ -112,6 +111,10 @@ func showDetails(client *fritzbox.Client, uid string) {
 	}
 
 	fmt.Println("\nConfiguration:")
+
+	if cfg.TempOffset != nil {
+		fmt.Printf("  Temp Offset:   %.1f°C\n", *cfg.TempOffset)
+	}
 
 	fmt.Printf("  Summer Period: %v", cfg.SummerPeriod.Enabled)
 	if cfg.SummerPeriod.Enabled && !cfg.SummerPeriod.StartTime.IsZero() {

@@ -36,7 +36,6 @@ type Thermostat struct {
 
     TargetTemp, CurrentTemp float64  // °C
     ComfortTemp, ReducedTemp float64
-    TempOffset float64
 
     IsLocked, IsSummerActive, IsHolidayActive bool
     Boost, WindowOpen SpecialMode
@@ -47,6 +46,7 @@ type Thermostat struct {
 }
 
 type ThermostatConfig struct {
+    TempOffset     *float64
     SummerPeriod   SummerPeriod
     HolidayPeriods []HolidayPeriod
     WeeklySchedule []ScheduleEntry
