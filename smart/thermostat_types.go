@@ -153,10 +153,20 @@ func nextChangeFromRest(nc *rest.HelperNextChange) *NextChange {
 }
 
 func tempToCelsius(t *rest.HelperTemperature) float64 {
-	if t == nil || t.Celsius == nil {
+	if t == nil {
 		return 0
 	}
-	return float64(*t.Celsius)
+	switch t.Mode {
+	case rest.HelperTemperatureModeOn:
+		return 28.0
+	case rest.HelperTemperatureModeOff:
+		return 0.0
+	default:
+		if t.Celsius == nil {
+			return 0
+		}
+		return float64(*t.Celsius)
+	}
 }
 
 // ThermostatHandle provides a fluent API for thermostat operations.
