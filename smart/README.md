@@ -1,6 +1,6 @@
 # smart
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/ByteSizedMarius/go-fritzbox-api/v2.svg)](https://pkg.go.dev/github.com/ByteSizedMarius/go-fritzbox-api/v2)
+[![Go Reference](https://pkg.go.dev/badge/github.com/ByteSizedMarius/go-fritzbox-api/v2.svg)](https://pkg.go.dev/github.com/ByteSizedMarius/go-fritzbox-api/v2/smart)
 
 High-level helpers for FRITZ!Box smart home devices. Wraps the `rest` package with clean Go types and a fluent Handle API.
 

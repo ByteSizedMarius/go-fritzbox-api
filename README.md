@@ -72,6 +72,8 @@ FRITZ!Box has two official smart home APIs:
 - **Smart Home REST API** (`/api/v0/smarthome/...`): JSON-based, requires FRITZ!OS 8.20+. More comprehensive; [OpenAPI spec](https://fritz.support/resources/SmarthomeRestApiFRITZOS82.yaml)
 - **AHA HTTP Interface** (`/webservices/homeautoswitch.lua`): XML-based, available since FRITZ!OS 5.53; [Docs](https://avm.de/fileadmin/user_upload/Global/Service/Schnittstellen/AHA-HTTP-Interface.pdf)
 
+The `scripts/` directory contains `fix-openapi.go`, which preprocesses AVM's OpenAPI spec to fix code generation issues (inline schemas, discriminator patterns). These issues have been reported to AVM.
+
 ## Compatibility
 
 Tested with FRITZ!OS 8.21 on the 6690 Cable. Smart home implementations (DECT) are stable across versions and routers. Endpoints in the `unsafe/` package may break between firmware versions.
