@@ -24,7 +24,6 @@ type Thermostat struct {
 	CurrentTemp float64 // from TemperatureInterface
 	ComfortTemp float64
 	ReducedTemp float64
-	TempOffset  float64
 
 	// State flags
 	IsLocked        bool
@@ -75,62 +74,20 @@ func GetAllThermostats(c *fritzbox.Client) ([]Thermostat, error) {
 
 // GetThermostat returns a single thermostat by UID/AIN.
 func GetThermostat(c *fritzbox.Client, uid string) (*Thermostat, error) {
-	configuration, err := rest.GetConfigurationUnitByUID(c, uid)
+	overview, err := rest.GetOverview(c)
 	if err != nil {
 		return nil, err
 	}
-	device, err := rest.GetConfigurationDeviceByUID(c, uid)
-	if err != nil {
-		return nil, err
-	}
-	t := thermostatFromConfiguration(configuration, device)
 
-	return &t, nil
-}
-
-func thermostatFromConfiguration(unit *rest.EndpointConfigurationUnit, device *rest.EndpointConfigurationDevice) Thermostat {
-	t := Thermostat{
-		UID:         unit.UID,
-		AIN:         unit.Ain,
-		Name:        string(unit.Name),
-		IsConnected: unit.IsConnected,
-	}
-
-	// Thermostat interface data
-	if thermo := unit.Interfaces.ThermostatInterface; thermo != nil {
-		t.TargetTemp = tempToCelsius(thermo.SetPointTemperature)
-		t.ComfortTemp = tempToCelsius(thermo.ComfortTemperature)
-		t.ReducedTemp = tempToCelsius(thermo.ReducedTemperature)
-		t.IsLocked = derefBool(thermo.LockedDeviceLocalEnabled)
-		t.IsSummerActive = derefBool(thermo.IsSummertimeActive)
-		t.IsHolidayActive = derefBool(thermo.IsHolidayActive)
-
-		if thermo.Boost != nil {
-			t.Boost = specialModeFromRest(thermo.Boost)
-		}
-		if thermo.WindowOpenMode != nil {
-			t.WindowOpen = specialModeFromRestConfig(thermo.WindowOpenMode)
-		}
-		if thermo.NextChange != nil {
-			t.NextChange = nextChangeFromRest(thermo.NextChange)
-		}
-		if thermo.TemperatureOffset != nil {
-			t.TempOffset = float64(derefFloat32(thermo.TemperatureOffset.InternalOffset))
+	for _, unit := range overview.Thermostats() {
+		if unit.UID == uid || unit.Ain == uid {
+			device := findDevice(overview.Devices, unit.ParentUid)
+			t := thermostatFromOverview(unit, device)
+			return &t, nil
 		}
 	}
 
-	// Temperature interface (current temp)
-	if temp := unit.Interfaces.TemperatureInterface; temp != nil {
-		t.CurrentTemp = float64(derefFloat32(temp.Celsius))
-	}
-
-	// Battery info from device
-	if device != nil {
-		t.BatteryLevel = derefInt(device.BatteryValue)
-		t.IsBatteryLow = derefBool(device.IsBatteryLow)
-	}
-
-	return t
+	return nil, ErrNotFound
 }
 
 func thermostatFromOverview(unit rest.HelperOverviewUnit, device *rest.HelperOverviewDevice) Thermostat {
@@ -139,7 +96,6 @@ func thermostatFromOverview(unit rest.HelperOverviewUnit, device *rest.HelperOve
 		AIN:         unit.Ain,
 		Name:        string(unit.Name),
 		IsConnected: derefBool(unit.IsConnected),
-		TempOffset:  -8000,
 	}
 
 	// Thermostat interface data
@@ -186,16 +142,6 @@ func specialModeFromRest(sm *rest.HelperSpecialModeThermostat) SpecialMode {
 	return mode
 }
 
-func specialModeFromRestConfig(sm *rest.HelperWindowOpenModeConfig) SpecialMode {
-	mode := SpecialMode{
-		Active: derefBool(sm.Enabled),
-	}
-	if sm.EndTime != nil && *sm.EndTime > 0 {
-		mode.EndTime = time.Unix(int64(*sm.EndTime), 0)
-	}
-	return mode
-}
-
 func nextChangeFromRest(nc *rest.HelperNextChange) *NextChange {
 	if nc.ChangeTime == nil {
 		return nil
@@ -229,6 +175,7 @@ func NewThermostatHandle(c *fritzbox.Client, uid string) *ThermostatHandle {
 // ThermostatConfig contains configuration data from the configuration endpoint.
 // This includes schedules and periods that aren't available in the overview.
 type ThermostatConfig struct {
+	TempOffset     *float64
 	SummerPeriod   SummerPeriod
 	HolidayPeriods []HolidayPeriod
 	WeeklySchedule []ScheduleEntry
