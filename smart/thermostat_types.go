@@ -24,7 +24,6 @@ type Thermostat struct {
 	CurrentTemp float64 // from TemperatureInterface
 	ComfortTemp float64
 	ReducedTemp float64
-	TempOffset  float64
 
 	// State flags
 	IsLocked        bool
@@ -176,6 +175,7 @@ func NewThermostatHandle(c *fritzbox.Client, uid string) *ThermostatHandle {
 // ThermostatConfig contains configuration data from the configuration endpoint.
 // This includes schedules and periods that aren't available in the overview.
 type ThermostatConfig struct {
+	TempOffset     *float64
 	SummerPeriod   SummerPeriod
 	HolidayPeriods []HolidayPeriod
 	WeeklySchedule []ScheduleEntry

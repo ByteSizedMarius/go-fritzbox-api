@@ -30,6 +30,11 @@ func (h *ThermostatHandle) GetConfig() (*ThermostatConfig, error) {
 			}
 		}
 
+		if ti.TemperatureOffset != nil && ti.TemperatureOffset.InternalOffset != nil {
+			offset := float64(*ti.TemperatureOffset.InternalOffset)
+			result.TempOffset = &offset
+		}
+
 		if ti.HolidayPeriods != nil && ti.HolidayPeriods.Periods != nil {
 			periods := *ti.HolidayPeriods.Periods
 			result.HolidayPeriods = make([]HolidayPeriod, len(periods))
