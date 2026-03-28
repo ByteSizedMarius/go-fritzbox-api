@@ -328,6 +328,9 @@ func (h *ThermostatHandle) SetSummerPeriod(enabled bool, startMonth, startDay, e
 }
 
 // AddHoliday adds a holiday period with the specified temperature.
+// If the holiday end overlaps with an enabled summer period, it is automatically
+// clamped to the summer start date. Returns an error if the holiday falls entirely
+// within the summer period.
 func (h *ThermostatHandle) AddHoliday(start, end time.Time, celsius float64) error {
 	startMinutes := int(MinutesFromYearStart(start))
 	endMinutes := int(MinutesFromYearStart(end))
@@ -337,14 +340,34 @@ func (h *ThermostatHandle) AddHoliday(start, end time.Time, celsius float64) err
 		return fmt.Errorf("get current config: %w", err)
 	}
 
-	if config.Interfaces.ThermostatInterface == nil {
+	ti := config.Interfaces.ThermostatInterface
+	if ti == nil {
 		return fmt.Errorf("unit %s does not have a thermostat interface", h.uid)
 	}
 
+	// Clamp holiday end to one day before summer starts if they overlap.
+	// FritzBox uses day-granularity (multiples of 1440 minutes) and rejects
+	// holidays that touch or overlap the summer period.
+	if ti.SummerPeriod != nil && ti.SummerPeriod.Enabled && ti.SummerPeriod.StartTime != nil {
+		summerStart := *ti.SummerPeriod.StartTime
+		summerEnd := 0
+		if ti.SummerPeriod.EndTime != nil {
+			summerEnd = *ti.SummerPeriod.EndTime
+		}
+		if endMinutes > summerStart && startMinutes < summerStart {
+			endMinutes = summerStart - 1440
+		}
+		if startMinutes >= summerStart && summerEnd > 0 && startMinutes < summerEnd {
+			return fmt.Errorf("holiday falls within the summer period (%d >= %d)", startMinutes, summerStart)
+		}
+		if endMinutes <= startMinutes {
+			return fmt.Errorf("holiday has no duration after clamping to summer period")
+		}
+	}
+
 	var periods []rest.HelperPeriodHolidayRange
-	if config.Interfaces.ThermostatInterface.HolidayPeriods != nil &&
-		config.Interfaces.ThermostatInterface.HolidayPeriods.Periods != nil {
-		periods = *config.Interfaces.ThermostatInterface.HolidayPeriods.Periods
+	if ti.HolidayPeriods != nil && ti.HolidayPeriods.Periods != nil {
+		periods = *ti.HolidayPeriods.Periods
 	}
 
 	deleteAfter := true
